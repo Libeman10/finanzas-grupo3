@@ -5,7 +5,33 @@ import SideBar from '../../Shared/Presentation/side-bar.component.vue';
 const bondData = ref({
   monto: 10000,
   interes: 5,
-  plazo: 6
+  plazo: 6,
+  capitalizacion: 'mensual', // Nueva propiedad para la frecuencia
+  usarTasaEfectiva: false, // Checkbox para alternar entre tasa efectiva y nominal
+  tasaEfectivaAnual: 5 // Tasa efectiva anual cuando el checkbox está activo
+});
+
+// Opciones de capitalización
+const capitalizacionOptions = ref([
+  { label: 'Diaria', value: 'diaria', periodos: 365 },
+  { label: 'Mensual', value: 'mensual', periodos: 12 },
+  { label: 'Bimestral', value: 'bimestral', periodos: 6 },
+  { label: 'Trimestral', value: 'trimestral', periodos: 4 },
+  { label: 'Semestral', value: 'semestral', periodos: 2 },
+  { label: 'Anual', value: 'anual', periodos: 1 }
+]);
+
+// Nuevos campos para costos adicionales
+const costosAdicionales = ref({
+  // Para TREA (Tasa de Rendimiento Efectivo Anual)
+  costosEmisor: 0.5, // % del monto
+  comisionCasaBolsa: 0.3, // % del monto
+  impuestos: 0.2, // % del monto
+  
+  // Para TCEA (Tasa de Costo Efectivo Anual)
+  costosCavali: 0.1, // % del monto
+  costosEstructuracion: 0.4, // % del monto
+  costosColocacion: 0.6 // % del monto
 });
 
 const cashFlowData = ref([]);
@@ -20,8 +46,69 @@ const metrics = ref({
   tasaCostoEfectivoAnual: 0,
   tasaRendimientoEfectivoAnual: 0,
   convexidad: 0,
-  duracion: 0
+  duracion: 0,
+  // Nuevos campos para mostrar los costos
+  totalCostosTREA: 0,
+  totalCostosTCEA: 0,
+  tasaEfectivaPeriodo: 0,
+  periodosAnio: 0
 });
+
+// Función para obtener los períodos por año según la capitalización
+const getPeriodosAnio = (capitalizacion) => {
+  const opcion = capitalizacionOptions.value.find(opt => opt.value === capitalizacion);
+  return opcion ? opcion.periodos : 12;
+};
+
+// Función para convertir tasa nominal anual a tasa efectiva del período
+const getTasaEfectivaPeriodo = (tasaAnual, capitalizacion, usarTasaEfectiva = false) => {
+  const tasa = tasaAnual / 100;
+  
+  if (usarTasaEfectiva) {
+    // Si se usa tasa efectiva anual, convertir directamente al período de pago
+    const periodosPago = bondData.value.capitalizacion === 'mensual' ? 12 : 
+                        bondData.value.capitalizacion === 'bimestral' ? 6 :
+                        bondData.value.capitalizacion === 'trimestral' ? 4 :
+                        bondData.value.capitalizacion === 'semestral' ? 2 :
+                        bondData.value.capitalizacion === 'anual' ? 1 : 
+                        bondData.value.capitalizacion === 'diaria' ? 365 : 12;
+    
+    return Math.pow(1 + tasa, 1 / periodosPago) - 1;
+  } else {
+    // Si se usa tasa nominal, convertir primero a efectiva anual, luego al período
+    const periodosAnio = getPeriodosAnio(capitalizacion);
+    const tasaEfectivaAnual = Math.pow(1 + tasa / periodosAnio, periodosAnio) - 1;
+    
+    const periodosPago = bondData.value.capitalizacion === 'mensual' ? 12 : 
+                        bondData.value.capitalizacion === 'bimestral' ? 6 :
+                        bondData.value.capitalizacion === 'trimestral' ? 4 :
+                        bondData.value.capitalizacion === 'semestral' ? 2 :
+                        bondData.value.capitalizacion === 'anual' ? 1 : 
+                        bondData.value.capitalizacion === 'diaria' ? 365 : 12;
+    
+    return Math.pow(1 + tasaEfectivaAnual, 1 / periodosPago) - 1;
+  }
+};
+
+// Función para obtener el número de períodos de pago
+const getPeriodosPago = (plazoMeses, capitalizacion) => {
+  switch(capitalizacion) {
+    case 'diaria':
+      return Math.round(plazoMeses * 30.44); // Aproximadamente 30.44 días por mes
+    case 'mensual':
+      return plazoMeses;
+    case 'bimestral':
+      return Math.round(plazoMeses / 2);
+    case 'trimestral':
+      return Math.round(plazoMeses / 3);
+    case 'semestral':
+      return Math.round(plazoMeses / 6);
+    case 'anual':
+      return Math.round(plazoMeses / 12);
+    default:
+      return plazoMeses;
+  }
+};
 
 const calcularCuotaFrancesa = (capital, tasa, periodos) => {
   if (tasa === 0) return capital / periodos;
@@ -31,30 +118,41 @@ const calcularCuotaFrancesa = (capital, tasa, periodos) => {
 
 const calculateCashFlow = () => {
   const monto = parseFloat(bondData.value.monto) || 0;
-  const tasaAnual = parseFloat(bondData.value.interes) / 100 || 0;
-  const plazo = parseInt(bondData.value.plazo) || 0;
+  const tasaAnual = bondData.value.usarTasaEfectiva ? 
+                   parseFloat(bondData.value.tasaEfectivaAnual) || 0 :
+                   parseFloat(bondData.value.interes) || 0;
+  const plazoMeses = parseInt(bondData.value.plazo) || 0;
+  const capitalizacion = bondData.value.capitalizacion;
+  const usarTasaEfectiva = bondData.value.usarTasaEfectiva;
 
-  if (monto <= 0 || tasaAnual < 0 || plazo <= 0 || plazo > 100) {
+  if (monto <= 0 || tasaAnual < 0 || plazoMeses <= 0 || plazoMeses > 1200) {
     alert('Por favor ingrese valores válidos');
     return;
   }
 
-  const tasaPeriodica = tasaAnual / 12;
+  // Calcular tasa efectiva del período de pago
+  const tasaEfectivaPeriodo = getTasaEfectivaPeriodo(tasaAnual, capitalizacion, usarTasaEfectiva);
+  const periodosPago = getPeriodosPago(plazoMeses, capitalizacion);
+  const periodosAnio = getPeriodosAnio(capitalizacion);
+
+  // Actualizar métricas básicas
+  metrics.value.tasaEfectivaPeriodo = tasaEfectivaPeriodo;
+  metrics.value.periodosAnio = periodosAnio;
   
   let flujo = [];
   let saldoPendiente = monto;
 
-  const cuotaFrancesa = calcularCuotaFrancesa(saldoPendiente, tasaPeriodica, plazo);
+  const cuotaFrancesa = calcularCuotaFrancesa(saldoPendiente, tasaEfectivaPeriodo, periodosPago);
 
-  for (let i = 0; i < plazo; i++) {
+  for (let i = 0; i < periodosPago; i++) {
     const periodo = i + 1;
     const saldoInicial = saldoPendiente;
-    const interes = saldoPendiente * tasaPeriodica;
+    const interes = saldoPendiente * tasaEfectivaPeriodo;
     let cuota = cuotaFrancesa;
     let amortizacion = cuota - interes;
 
     // Ajustar última cuota si es necesario
-    if (i === plazo - 1) {
+    if (i === periodosPago - 1) {
       amortizacion = saldoPendiente;
       cuota = amortizacion + interes;
     }
@@ -62,9 +160,7 @@ const calculateCashFlow = () => {
     saldoPendiente -= amortizacion;
 
     const plazosGraciaActuales = cashFlowData.value.map(f => f.plazoGracia);
-
     const plazoGracia = plazosGraciaActuales[i] || 'N';
-
 
     if (plazoGracia === 'T') {
       cuota = 0;
@@ -93,45 +189,99 @@ const calculateCashFlow = () => {
 
 const calcularMetricas = () => {
   const monto = parseFloat(bondData.value.monto);
-  const tasaAnual = parseFloat(bondData.value.interes) / 100;
+  const tasaAnual = bondData.value.usarTasaEfectiva ? 
+                   parseFloat(bondData.value.tasaEfectivaAnual) / 100 :
+                   parseFloat(bondData.value.interes) / 100;
   const flujos = cashFlowData.value;
+  const capitalizacion = bondData.value.capitalizacion;
 
   if (flujos.length === 0) return;
 
-  const tasaMensual = tasaAnual / 12;
-  metrics.value.tasaCostoEfectivoAnual = parseFloat((Math.pow(1 + tasaMensual, 12) - 1).toFixed(4));
+  const tasaEfectivaPeriodo = metrics.value.tasaEfectivaPeriodo;
+  const periodosAnio = metrics.value.periodosAnio;
+  
+  // Calcular costos totales
+  const totalCostosTREA = (
+    (costosAdicionales.value.costosEmisor / 100) +
+    (costosAdicionales.value.comisionCasaBolsa / 100) +
+    (costosAdicionales.value.impuestos / 100)
+  ) * monto;
+  
+  const totalCostosTCEA = (
+    (costosAdicionales.value.costosCavali / 100) +
+    (costosAdicionales.value.costosEstructuracion / 100) +
+    (costosAdicionales.value.costosColocacion / 100)
+  ) * monto;
 
-  metrics.value.tasaRendimientoEfectivoAnual = metrics.value.tasaCostoEfectivoAnual;
+  metrics.value.totalCostosTREA = totalCostosTREA;
+  metrics.value.totalCostosTCEA = totalCostosTCEA;
 
+  // TCEA - Tasa de Costo Efectivo Anual (incluye costos del inversionista)
+  const montoNetoTCEA = monto + totalCostosTCEA;
+  const periodosPago = flujos.length;
+  const tasaEfectivaTCEA = Math.pow(montoNetoTCEA / monto, periodosAnio / periodosPago) - 1;
+  metrics.value.tasaCostoEfectivoAnual = parseFloat(tasaEfectivaTCEA.toFixed(4));
+
+  // TREA - Tasa de Rendimiento Efectivo Anual (incluye costos del emisor)
+  const montoNetoTREA = monto - totalCostosTREA;
+  let valorPresenteIngresos = 0;
+  
+  flujos.forEach((flujo, index) => {
+    const periodo = index + 1;
+    const flujoEfectivo = flujo.cuota;
+    valorPresenteIngresos += flujoEfectivo / Math.pow(1 + tasaEfectivaPeriodo, periodo);
+  });
+  
+  // Calcular TREA usando TIR ajustada por costos
+  const tasaEfectivaTREA = Math.pow(valorPresenteIngresos / montoNetoTREA, periodosAnio / periodosPago) - 1;
+  metrics.value.tasaRendimientoEfectivoAnual = parseFloat(tasaEfectivaTREA.toFixed(4));
+
+  // Duración (ajustada por frecuencia de capitalización)
   let duracion = 0;
   let valorPresente = 0;
   
   flujos.forEach((flujo, index) => {
     const periodo = index + 1;
     const flujoEfectivo = flujo.cuota;
-    const vp = flujoEfectivo / Math.pow(1 + tasaMensual, periodo);
+    const vp = flujoEfectivo / Math.pow(1 + tasaEfectivaPeriodo, periodo);
     duracion += (periodo * vp);
     valorPresente += vp;
   });
   
-  metrics.value.duracion = parseFloat((duracion / valorPresente / 12).toFixed(4)); 
+  metrics.value.duracion = parseFloat((duracion / valorPresente / periodosAnio).toFixed(4));
 
-
+  // Convexidad (ajustada por frecuencia de capitalización)
   let convexidad = 0;
   flujos.forEach((flujo, index) => {
     const periodo = index + 1;
     const flujoEfectivo = flujo.cuota;
-    const vp = flujoEfectivo / Math.pow(1 + tasaMensual, periodo);
+    const vp = flujoEfectivo / Math.pow(1 + tasaEfectivaPeriodo, periodo);
     convexidad += (periodo * (periodo + 1) * vp);
   });
   
-  metrics.value.convexidad = parseFloat((convexidad / (valorPresente * Math.pow(1 + tasaMensual, 2)) / 144).toFixed(4)); 
+  metrics.value.convexidad = parseFloat((convexidad / (valorPresente * Math.pow(1 + tasaEfectivaPeriodo, 2)) / Math.pow(periodosAnio, 2)).toFixed(4));
 };
 
 const updateGracePeriod = (rowData, newValue) => {
   rowData.plazoGracia = newValue;
   calculateCashFlow();
 };
+
+// Computed para mostrar información adicional sobre la capitalización
+const capitalizacionInfo = computed(() => {
+  const opcion = capitalizacionOptions.value.find(opt => opt.value === bondData.value.capitalizacion);
+  if (!opcion) return '';
+  
+  const tasaInput = bondData.value.usarTasaEfectiva ? 
+                   bondData.value.tasaEfectivaAnual : 
+                   bondData.value.interes;
+  const tasaEfectiva = getTasaEfectivaPeriodo(tasaInput, bondData.value.capitalizacion, bondData.value.usarTasaEfectiva);
+  const periodos = getPeriodosPago(bondData.value.plazo, bondData.value.capitalizacion);
+  
+  const tipoTasa = bondData.value.usarTasaEfectiva ? 'Efectiva Anual' : 'Nominal Anual';
+  
+  return `Tasa ${tipoTasa}: ${tasaInput}% | Tasa efectiva por período: ${(tasaEfectiva * 100).toFixed(4)}% | Períodos de pago: ${periodos}`;
+});
 
 calculateCashFlow();
 </script>
@@ -157,22 +307,155 @@ calculateCashFlow();
           </div>
           
           <div class="input-group">
-            <label for="interes">Interés (%)</label>
-            <pv-input-text 
-              id="interes" 
-              v-model="bondData.interes" 
-              type="number"
-              step="0.01"
-              placeholder="5.0" />
-          </div>
-          
-          <div class="input-group">
-            <label for="plazo">Plazo de bono (meses)</label>
+            <label for="plazo">Plazo del bono (meses)</label>
             <pv-input-text 
               id="plazo" 
               v-model="bondData.plazo" 
               type="number"
-              placeholder="6" />
+              placeholder="6" 
+              @input="calculateCashFlow" />
+          </div>
+          
+          <!-- Checkbox para alternar entre tasa efectiva y nominal -->
+          <div class="input-group checkbox-group">
+            <div class="checkbox-container">
+              <pv-checkbox 
+                id="usarTasaEfectiva" 
+                v-model="bondData.usarTasaEfectiva" 
+                :binary="true"
+                @change="calculateCashFlow" />
+              <label for="usarTasaEfectiva">Usar Tasa Efectiva Anual</label>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Inputs condicionales para tasa -->
+        <div class="rate-section">
+          <!-- Mostrar solo cuando se usa tasa efectiva -->
+          <div v-if="bondData.usarTasaEfectiva" class="input-group">
+            <label for="tasaEfectivaAnual">Tasa Efectiva Anual (%)</label>
+            <pv-input-text 
+              id="tasaEfectivaAnual" 
+              v-model="bondData.tasaEfectivaAnual" 
+              type="number"
+              step="0.01"
+              placeholder="5.0" 
+              @input="calculateCashFlow" />
+          </div>
+          
+          <!-- Mostrar solo cuando se usa tasa nominal -->
+          <div v-else class="rate-inputs-group">
+            <div class="input-group">
+              <label for="interes">Tasa Nominal Anual (%)</label>
+              <pv-input-text 
+                id="interes" 
+                v-model="bondData.interes" 
+                type="number"
+                step="0.01"
+                placeholder="5.0" 
+                @input="calculateCashFlow" />
+            </div>
+            
+            <div class="input-group">
+              <label for="capitalizacion">Frecuencia de Capitalización</label>
+              <pv-dropdown
+                id="capitalizacion"
+                v-model="bondData.capitalizacion"
+                :options="capitalizacionOptions"
+                option-label="label"
+                option-value="value"
+                @update:modelValue="calculateCashFlow"
+                class="w-full"
+                placeholder="Seleccionar frecuencia"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div class="capitalization-info" v-if="capitalizacionInfo">
+          <p><strong>Información de Capitalización:</strong> {{ capitalizacionInfo }}</p>
+        </div>
+      </div>
+
+      <!-- Nueva sección para costos adicionales -->
+      <div class="costs-section">
+        <h2>Costos Adicionales (% del monto)</h2>
+        
+        <div class="costs-grid">
+          <div class="cost-group">
+            <h3>Para TREA (Tasa de Rendimiento)</h3>
+            <div class="cost-inputs">
+              <div class="input-group">
+                <label for="costosEmisor">Costos del Emisor (%)</label>
+                <pv-input-text 
+                  id="costosEmisor" 
+                  v-model="costosAdicionales.costosEmisor" 
+                  type="number"
+                  step="0.01"
+                  placeholder="0.5" 
+                  @input="calculateCashFlow" />
+              </div>
+              
+              <div class="input-group">
+                <label for="comisionCasaBolsa">Comisión Casa de Bolsa (%)</label>
+                <pv-input-text 
+                  id="comisionCasaBolsa" 
+                  v-model="costosAdicionales.comisionCasaBolsa" 
+                  type="number"
+                  step="0.01"
+                  placeholder="0.3" 
+                  @input="calculateCashFlow" />
+              </div>
+              
+              <div class="input-group">
+                <label for="impuestos">Impuestos (%)</label>
+                <pv-input-text 
+                  id="impuestos" 
+                  v-model="costosAdicionales.impuestos" 
+                  type="number"
+                  step="0.01"
+                  placeholder="0.2" 
+                  @input="calculateCashFlow" />
+              </div>
+            </div>
+          </div>
+          
+          <div class="cost-group">
+            <h3>Para TCEA (Tasa de Costo)</h3>
+            <div class="cost-inputs">
+              <div class="input-group">
+                <label for="costosCavali">Costos CAVALI (%)</label>
+                <pv-input-text 
+                  id="costosCavali" 
+                  v-model="costosAdicionales.costosCavali" 
+                  type="number"
+                  step="0.01"
+                  placeholder="0.1" 
+                  @input="calculateCashFlow" />
+              </div>
+              
+              <div class="input-group">
+                <label for="costosEstructuracion">Costos de Estructuración (%)</label>
+                <pv-input-text 
+                  id="costosEstructuracion" 
+                  v-model="costosAdicionales.costosEstructuracion" 
+                  type="number"
+                  step="0.01"
+                  placeholder="0.4" 
+                  @input="calculateCashFlow" />
+              </div>
+              
+              <div class="input-group">
+                <label for="costosColocacion">Costos de Colocación (%)</label>
+                <pv-input-text 
+                  id="costosColocacion" 
+                  v-model="costosAdicionales.costosColocacion" 
+                  type="number"
+                  step="0.01"
+                  placeholder="0.6" 
+                  @input="calculateCashFlow" />
+              </div>
+            </div>
           </div>
         </div>
         
@@ -240,7 +523,7 @@ calculateCashFlow();
               }) }}
             </template>
           </pv-column>
-            <pv-column field="plazoGracia" header="Plazo de gracia" style="min-width: 150px">
+          <pv-column field="plazoGracia" header="Plazo de gracia" style="min-width: 150px">
             <template #body="slotProps">
               <pv-dropdown
                 v-model="slotProps.data.plazoGracia"
@@ -259,14 +542,20 @@ calculateCashFlow();
       <div class="metrics-container" v-if="cashFlowData.length > 0">
         <h3>Métricas Financieras</h3>
         <div class="metrics-grid">
-          <div class="metric-card">
-            <div class="metric-label">Tasa de Costo Efectivo Anual</div>
+          <div class="metric-card tcea">
+            <div class="metric-label">TCEA - Tasa de Costo Efectivo Anual</div>
             <div class="metric-value">{{ (metrics.tasaCostoEfectivoAnual * 100).toFixed(2) }}%</div>
+            <div class="metric-detail">
+              Costos incluidos: S/ {{ metrics.totalCostosTCEA.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}
+            </div>
           </div>
           
-          <div class="metric-card">
-            <div class="metric-label">Tasa de Rendimiento Efectivo Anual</div>
+          <div class="metric-card trea">
+            <div class="metric-label">TREA - Tasa de Rendimiento Efectivo Anual</div>
             <div class="metric-value">{{ (metrics.tasaRendimientoEfectivoAnual * 100).toFixed(2) }}%</div>
+            <div class="metric-detail">
+              Costos incluidos: S/ {{ metrics.totalCostosTREA.toLocaleString('es-PE', { minimumFractionDigits: 2 }) }}
+            </div>
           </div>
           
           <div class="metric-card">
@@ -306,6 +595,20 @@ calculateCashFlow();
   flex-direction: column;
 }
 
+.capitalization-info {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background-color: #f8f9fa;
+  border-left: 4px solid #007bff;
+  border-radius: 0.25rem;
+}
+
+.capitalization-info p {
+  margin: 0;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
 .page-title {
   text-align: right;
   margin-bottom: 2rem;
@@ -322,7 +625,7 @@ calculateCashFlow();
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-.input-section {
+.input-section, .costs-section {
   margin-bottom: 2rem;
   background: rgba(15, 23, 42, 0.7);
   padding: 1.5rem;
@@ -332,7 +635,7 @@ calculateCashFlow();
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
-.input-section h2 {
+.input-section h2, .costs-section h2 {
   margin-bottom: 1rem;
   color: #e2e8f0;
   font-size: 1.3rem;
@@ -344,6 +647,36 @@ calculateCashFlow();
   grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   margin-bottom: 1rem;
+}
+
+.costs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.cost-group {
+  background: rgba(30, 41, 59, 0.5);
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.cost-group h3 {
+  color: #60a5fa;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+  padding-bottom: 0.5rem;
+}
+
+.cost-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .input-group {
@@ -425,7 +758,7 @@ calculateCashFlow();
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1rem;
 }
 
@@ -448,6 +781,24 @@ calculateCashFlow();
   box-shadow: 0 8px 30px rgba(59, 130, 246, 0.2);
 }
 
+.metric-card.tcea {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.metric-card.trea {
+  border-color: rgba(34, 197, 94, 0.5);
+}
+
+.metric-card.tcea:hover {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 8px 30px rgba(239, 68, 68, 0.2);
+}
+
+.metric-card.trea:hover {
+  border-color: rgba(34, 197, 94, 0.7);
+  box-shadow: 0 8px 30px rgba(34, 197, 94, 0.2);
+}
+
 .metric-label {
   font-size: 0.9rem;
   font-weight: 500;
@@ -459,7 +810,64 @@ calculateCashFlow();
   font-size: 1.8rem;
   font-weight: bold;
   color: #60a5fa;
+  margin-bottom: 0.5rem;
 }
+
+.metric-card.tcea .metric-value {
+  color: #f87171;
+}
+
+.metric-card.trea .metric-value {
+  color: #4ade80;
+}
+
+.metric-detail {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(30, 41, 59, 0.5);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-container label {
+  color: #e2e8f0;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Tasa input específico */
+.rate-section .input-group {
+  background: rgba(30, 41, 59, 0.5);
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.rate-section .input-group:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
+}
+
 
 /* Estilos para PrimeVue */
 :deep(.p-datatable) {
@@ -610,6 +1018,12 @@ calculateCashFlow();
   background: rgba(59, 130, 246, 0.7);
 }
 
+@media (max-width: 1024px) {
+  .costs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .input-grid {
     grid-template-columns: 1fr;
@@ -619,10 +1033,18 @@ calculateCashFlow();
     grid-template-columns: 1fr;
   }
   
+  .costs-grid {
+    grid-template-columns: 1fr;
+  }
+  
   .page-title {
     text-align: center;
     align-self: center;
     font-size: 1.2rem;
+  }
+  
+  .cost-inputs {
+    gap: 0.75rem;
   }
 }
 
@@ -639,6 +1061,7 @@ calculateCashFlow();
 }
 
 .input-section,
+.costs-section,
 .table-container,
 .metrics-container {
   animation: fadeInUp 0.6s ease-out;
@@ -661,4 +1084,11 @@ calculateCashFlow();
 .metric-card:nth-child(4) {
   animation-delay: 0.4s;
 }
+
+.cost-group {
+  animation: fadeInUp 0.6s ease-out;
+  animation-delay: 0.15s;
+  animation-fill-mode: both;
+}
+
 </style>

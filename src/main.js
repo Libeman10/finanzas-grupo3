@@ -19,6 +19,8 @@ import Column from 'primevue/column';
 import ColumnGroup from 'primevue/columngroup';   
 import Row from 'primevue/row';                   
 import Dropdown from 'primevue/dropdown';
+import Checkbox from 'primevue/checkbox';
+
 
 import router from './router'
 
@@ -30,7 +32,7 @@ app.use(PrimeVue, {
     }
 });
 
-
+app.component('pv-checkbox', Checkbox);
 app.component('pv-data-table', DataTable);
 app.component('pv-column', Column);
 app.component('pv-column-group', ColumnGroup);  
