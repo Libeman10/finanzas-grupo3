@@ -29,7 +29,7 @@ const password = ref('');
             <label for="password">Contrasena</label>
           </pv-float-label>
         </div>
-        <router-link to="/cash-flow">
+        <router-link to="/the-menu">
           <pv-button label="Iniciar Sesion" class="login-button" />
         </router-link>
       </div>
