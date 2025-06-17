@@ -6,12 +6,11 @@ const bondData = ref({
   monto: 10000,
   interes: 5,
   plazo: 6,
-  capitalizacion: 'mensual', // Nueva propiedad para la frecuencia
-  usarTasaEfectiva: false, // Checkbox para alternar entre tasa efectiva y nominal
-  tasaEfectivaAnual: 5 // Tasa efectiva anual cuando el checkbox está activo
+  capitalizacion: 'mensual', 
+  usarTasaEfectiva: false, 
+  tasaEfectivaAnual: 5 
 });
 
-// Opciones de capitalización
 const capitalizacionOptions = ref([
   { label: 'Diaria', value: 'diaria', periodos: 365 },
   { label: 'Mensual', value: 'mensual', periodos: 12 },
@@ -21,17 +20,14 @@ const capitalizacionOptions = ref([
   { label: 'Anual', value: 'anual', periodos: 1 }
 ]);
 
-// Nuevos campos para costos adicionales
 const costosAdicionales = ref({
-  // Para TREA (Tasa de Rendimiento Efectivo Anual)
-  costosEmisor: 0.5, // % del monto
-  comisionCasaBolsa: 0.3, // % del monto
-  impuestos: 0.2, // % del monto
+  costosEmisor: 0.44, 
+  comisionCasaBolsa: 0.3, 
+  impuestos: 0.2,
   
-  // Para TCEA (Tasa de Costo Efectivo Anual)
-  costosCavali: 0.1, // % del monto
-  costosEstructuracion: 0.4, // % del monto
-  costosColocacion: 0.6 // % del monto
+  costosCavali: 0.052,
+  costosEstructuracion: 0.01, 
+  costosColocacion: 0.15 
 });
 
 const cashFlowData = ref([]);
@@ -47,25 +43,23 @@ const metrics = ref({
   tasaRendimientoEfectivoAnual: 0,
   convexidad: 0,
   duracion: 0,
-  // Nuevos campos para mostrar los costos
+
   totalCostosTREA: 0,
   totalCostosTCEA: 0,
   tasaEfectivaPeriodo: 0,
   periodosAnio: 0
 });
 
-// Función para obtener los períodos por año según la capitalización
+
 const getPeriodosAnio = (capitalizacion) => {
   const opcion = capitalizacionOptions.value.find(opt => opt.value === capitalizacion);
   return opcion ? opcion.periodos : 12;
 };
 
-// Función para convertir tasa nominal anual a tasa efectiva del período
 const getTasaEfectivaPeriodo = (tasaAnual, capitalizacion, usarTasaEfectiva = false) => {
   const tasa = tasaAnual / 100;
   
   if (usarTasaEfectiva) {
-    // Si se usa tasa efectiva anual, convertir directamente al período de pago
     const periodosPago = bondData.value.capitalizacion === 'mensual' ? 12 : 
                         bondData.value.capitalizacion === 'bimestral' ? 6 :
                         bondData.value.capitalizacion === 'trimestral' ? 4 :
@@ -75,7 +69,6 @@ const getTasaEfectivaPeriodo = (tasaAnual, capitalizacion, usarTasaEfectiva = fa
     
     return Math.pow(1 + tasa, 1 / periodosPago) - 1;
   } else {
-    // Si se usa tasa nominal, convertir primero a efectiva anual, luego al período
     const periodosAnio = getPeriodosAnio(capitalizacion);
     const tasaEfectivaAnual = Math.pow(1 + tasa / periodosAnio, periodosAnio) - 1;
     
@@ -90,11 +83,10 @@ const getTasaEfectivaPeriodo = (tasaAnual, capitalizacion, usarTasaEfectiva = fa
   }
 };
 
-// Función para obtener el número de períodos de pago
 const getPeriodosPago = (plazoMeses, capitalizacion) => {
   switch(capitalizacion) {
     case 'diaria':
-      return Math.round(plazoMeses * 30.44); // Aproximadamente 30.44 días por mes
+      return Math.round(plazoMeses * 30);
     case 'mensual':
       return plazoMeses;
     case 'bimestral':
@@ -117,6 +109,7 @@ const calcularCuotaFrancesa = (capital, tasa, periodos) => {
 };
 
 const calculateCashFlow = () => {
+
   const monto = parseFloat(bondData.value.monto) || 0;
   const tasaAnual = bondData.value.usarTasaEfectiva ? 
                    parseFloat(bondData.value.tasaEfectivaAnual) || 0 :
@@ -125,17 +118,15 @@ const calculateCashFlow = () => {
   const capitalizacion = bondData.value.capitalizacion;
   const usarTasaEfectiva = bondData.value.usarTasaEfectiva;
 
-  if (monto <= 0 || tasaAnual < 0 || plazoMeses <= 0 || plazoMeses > 1200) {
-    alert('Por favor ingrese valores válidos');
-    return;
-  }
+  if (monto <= 0 || plazoMeses <= 0 || plazoMeses > 1200 || tasaAnual < 2.5 || tasaAnual > 8) {
+  alert('Por favor ingrese una tasa de interés entre 2.5% y 8%, y valores válidos para el resto de campos.');
+  return;
+}
 
-  // Calcular tasa efectiva del período de pago
   const tasaEfectivaPeriodo = getTasaEfectivaPeriodo(tasaAnual, capitalizacion, usarTasaEfectiva);
   const periodosPago = getPeriodosPago(plazoMeses, capitalizacion);
   const periodosAnio = getPeriodosAnio(capitalizacion);
 
-  // Actualizar métricas básicas
   metrics.value.tasaEfectivaPeriodo = tasaEfectivaPeriodo;
   metrics.value.periodosAnio = periodosAnio;
   
@@ -151,7 +142,6 @@ const calculateCashFlow = () => {
     let cuota = cuotaFrancesa;
     let amortizacion = cuota - interes;
 
-    // Ajustar última cuota si es necesario
     if (i === periodosPago - 1) {
       amortizacion = saldoPendiente;
       cuota = amortizacion + interes;
@@ -200,7 +190,6 @@ const calcularMetricas = () => {
   const tasaEfectivaPeriodo = metrics.value.tasaEfectivaPeriodo;
   const periodosAnio = metrics.value.periodosAnio;
   
-  // Calcular costos totales
   const totalCostosTREA = (
     (costosAdicionales.value.costosEmisor / 100) +
     (costosAdicionales.value.comisionCasaBolsa / 100) +
@@ -216,13 +205,11 @@ const calcularMetricas = () => {
   metrics.value.totalCostosTREA = totalCostosTREA;
   metrics.value.totalCostosTCEA = totalCostosTCEA;
 
-  // TCEA - Tasa de Costo Efectivo Anual (incluye costos del inversionista)
   const montoNetoTCEA = monto + totalCostosTCEA;
   const periodosPago = flujos.length;
   const tasaEfectivaTCEA = Math.pow(montoNetoTCEA / monto, periodosAnio / periodosPago) - 1;
   metrics.value.tasaCostoEfectivoAnual = parseFloat(tasaEfectivaTCEA.toFixed(4));
 
-  // TREA - Tasa de Rendimiento Efectivo Anual (incluye costos del emisor)
   const montoNetoTREA = monto - totalCostosTREA;
   let valorPresenteIngresos = 0;
   
@@ -232,11 +219,10 @@ const calcularMetricas = () => {
     valorPresenteIngresos += flujoEfectivo / Math.pow(1 + tasaEfectivaPeriodo, periodo);
   });
   
-  // Calcular TREA usando TIR ajustada por costos
   const tasaEfectivaTREA = Math.pow(valorPresenteIngresos / montoNetoTREA, periodosAnio / periodosPago) - 1;
   metrics.value.tasaRendimientoEfectivoAnual = parseFloat(tasaEfectivaTREA.toFixed(4));
 
-  // Duración (ajustada por frecuencia de capitalización)
+
   let duracion = 0;
   let valorPresente = 0;
   
@@ -250,7 +236,7 @@ const calcularMetricas = () => {
   
   metrics.value.duracion = parseFloat((duracion / valorPresente / periodosAnio).toFixed(4));
 
-  // Convexidad (ajustada por frecuencia de capitalización)
+
   let convexidad = 0;
   flujos.forEach((flujo, index) => {
     const periodo = index + 1;
@@ -267,7 +253,6 @@ const updateGracePeriod = (rowData, newValue) => {
   calculateCashFlow();
 };
 
-// Computed para mostrar información adicional sobre la capitalización
 const capitalizacionInfo = computed(() => {
   const opcion = capitalizacionOptions.value.find(opt => opt.value === bondData.value.capitalizacion);
   if (!opcion) return '';
@@ -303,6 +288,7 @@ calculateCashFlow();
               id="monto" 
               v-model="bondData.monto" 
               type="number"
+              :min = '0'
               placeholder="10000" />
           </div>
           
@@ -316,7 +302,6 @@ calculateCashFlow();
               @input="calculateCashFlow" />
           </div>
           
-          <!-- Checkbox para alternar entre tasa efectiva y nominal -->
           <div class="input-group checkbox-group">
             <div class="checkbox-container">
               <pv-checkbox 
@@ -329,9 +314,7 @@ calculateCashFlow();
           </div>
         </div>
         
-        <!-- Inputs condicionales para tasa -->
         <div class="rate-section">
-          <!-- Mostrar solo cuando se usa tasa efectiva -->
           <div v-if="bondData.usarTasaEfectiva" class="input-group">
             <label for="tasaEfectivaAnual">Tasa Efectiva Anual (%)</label>
             <pv-input-text 
@@ -339,11 +322,12 @@ calculateCashFlow();
               v-model="bondData.tasaEfectivaAnual" 
               type="number"
               step="0.01"
+              :min = "2.5"
+              :max = "8.0"
               placeholder="5.0" 
               @input="calculateCashFlow" />
           </div>
           
-          <!-- Mostrar solo cuando se usa tasa nominal -->
           <div v-else class="rate-inputs-group">
             <div class="input-group">
               <label for="interes">Tasa Nominal Anual (%)</label>
@@ -352,6 +336,8 @@ calculateCashFlow();
                 v-model="bondData.interes" 
                 type="number"
                 step="0.01"
+                :min = "2.5"
+                :max = "8.0"
                 placeholder="5.0" 
                 @input="calculateCashFlow" />
             </div>
@@ -377,7 +363,6 @@ calculateCashFlow();
         </div>
       </div>
 
-      <!-- Nueva sección para costos adicionales -->
       <div class="costs-section">
         <h2>Costos Adicionales (% del monto)</h2>
         
