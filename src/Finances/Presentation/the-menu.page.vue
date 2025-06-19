@@ -8,7 +8,7 @@
     <!-- Toolbar con botón para agregar nueva calculadora -->
     <pv-toolbar class="toolbar-container">
       <template #start>
-        <h2 class="toolbar-title">Mis Calculadoras</h2>
+        <h2 class="toolbar-title">Mis Calculadoras ({{ calculators.length }})</h2>
       </template>
       <template #end>
         <pv-button 
@@ -21,68 +21,71 @@
       </template>
     </pv-toolbar>
 
-    <!-- DataView para mostrar las calculadoras -->
-    <pv-data-view 
-  :value="calculators" 
-  :layout="'grid'"
-  :paginator="calculators.length > 6"
-  :rows="6"
-  class="calculators-view"
->
-  <template #grid="slotProps">
-    <div v-if="slotProps?.data" class="col-12 md:col-6 lg:col-4">
-      <pv-card class="calculator-card">
-        <template #title>
-          <div class="card-header">
-            <i class="pi pi-calculator card-icon"></i>
-            <span>{{ slotProps.data.name || 'Sin nombre' }}</span>
-          </div>
-        </template>
-        
-        <template #subtitle>
-          <div class="card-date">
-            <i class="pi pi-calendar"></i>
-            <span>{{ formatDate(slotProps.data.createdAt) || 'Fecha inválida' }}</span>
-          </div>
-        </template>
-        
-        <template #content>
-          <div class="card-stats">
-            <div class="stat-item">
-              <span class="stat-label">ID:</span>
-              <span class="stat-value">#{{ slotProps.data.id || '-' }}</span>
+    <!-- Grid de calculadoras usando CSS Grid -->
+    <div v-if="calculators.length > 0" class="calculators-grid">
+      <div 
+        v-for="calculator in calculators" 
+        :key="calculator.id" 
+        class="calculator-card-wrapper"
+      >
+        <pv-card class="calculator-card">
+          <template #title>
+            <div class="card-header">
+              <i class="pi pi-calculator card-icon"></i>
+              <span>{{ calculator.name || 'Sin nombre' }}</span>
             </div>
-            <div class="stat-item">
-              <span class="stat-label">Estado:</span>
-              <span class="stat-value status-active">Activa</span>
+          </template>
+          
+          <template #subtitle>
+            <div class="card-date">
+              <i class="pi pi-calendar"></i>
+              <span>{{ formatDate(calculator.createdAt) }}</span>
             </div>
-          </div>
-        </template>
-        
-        <template #footer>
-          <div class="card-actions">
-            <pv-button 
-              icon="pi pi-file-excel" 
-              label="Descargar Excel"
-              class="p-button-success p-button-outlined"
-              :disabled="true"
-              size="small"
-            />
-            <pv-button 
-              @click="deleteCalculator(slotProps.data.id)"
-              icon="pi pi-trash" 
-              label="Eliminar"
-              class="p-button-danger p-button-outlined"
-              size="small"
-            />
-          </div>
-        </template>
-      </pv-card>
+          </template>
+          
+          <template #content>
+            <div class="card-stats">
+              <div class="stat-item">
+                <span class="stat-label">ID:</span>
+                <span class="stat-value">#{{ calculator.id }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Estado:</span>
+                <span class="stat-value status-active">Activa</span>
+              </div>
+            </div>
+          </template>
+          
+          <template #footer>
+            <div class="card-actions">
+              <pv-button 
+                @click="goToCashFlow(calculator.id)"
+                icon="pi pi-arrow-right" 
+                label="Ir a Cash Flow"
+                class="p-button-primary"
+                size="small"
+              />
+              <pv-button 
+                @click="downloadExcel(calculator.id)"
+                icon="pi pi-file-excel" 
+                label="Excel"
+                class="p-button-success p-button-outlined"
+                size="small"
+              />
+              <pv-button 
+                @click="deleteCalculator(calculator.id)"
+                icon="pi pi-trash" 
+                class="p-button-danger p-button-outlined"
+                size="small"
+              />
+            </div>
+          </template>
+        </pv-card>
+      </div>
     </div>
-  </template>
 
-  <template #empty>
-    <div class="empty-state">
+    <!-- Estado vacío -->
+    <div v-else class="empty-state">
       <i class="pi pi-calculator empty-icon"></i>
       <h3>No hay calculadoras creadas</h3>
       <p>Haz clic en "Nueva Calculadora" para crear tu primera calculadora de bonos</p>
@@ -94,18 +97,18 @@
         raised
       />
     </div>
-  </template>
-</pv-data-view>
+
+
   </div>
 </template>
 
 <script>
 export default {
-  
   name: "CalculadoraMenu",
   data() {
     return {
       calculators: [],
+      showDebug: false, // Deshabilitado
     };
   },
   mounted() {
@@ -113,38 +116,99 @@ export default {
   },
   methods: {
     addNewCalculator() {
-    const newCalculator = {
+      const newCalculator = {
         id: Date.now(),
         name: `Calculadora ${this.calculators.length + 1}`,
         createdAt: new Date()
-    };
-    this.calculators.push(newCalculator);
-    this.saveCalculators();
+      };
+      
+      this.calculators.push(newCalculator);
+      this.saveCalculators();
     },
-    saveCalculators() {
-      const json = JSON.stringify(this.calculators);
-      localStorage.setItem("calculators", json);
-    },
-    loadCalculators() {
-      const json = localStorage.getItem("calculators");
-      if (json) {
-        const loaded = JSON.parse(json);
-        // Parse createdAt como Date
-        this.calculators = loaded.map(c => ({
-          ...c,
-          createdAt: new Date(c.createdAt),
-        }));
+    
+    goToCashFlow(calculatorId) {
+      // Guardar el ID de la calculadora actual en localStorage
+      localStorage.setItem('currentCalculatorId', calculatorId);
+      
+      if (this.$router) {
+        this.$router.push({
+          name: 'CashFlow',
+          params: { id: calculatorId }
+        });
+      } else {
+
+        window.location.href = `/cash-flow?id=${calculatorId}`;
       }
     },
+    
+    downloadExcel(calculatorId) {
+      console.log('Descargando Excel para calculadora:', calculatorId);
+      alert(`Función de descarga Excel para calculadora ${calculatorId} - Por implementar`);
+    },
+    
+    deleteCalculator(calculatorId) {
+      console.log('Eliminando calculadora:', calculatorId);
+      
+      if (confirm('¿Estás seguro de que quieres eliminar esta calculadora?')) {
+        this.calculators = this.calculators.filter(calc => calc.id !== calculatorId);
+        this.saveCalculators();
+        console.log('Calculadora eliminada. Lista actual:', this.calculators);
+      }
+    },
+    
+    saveCalculators() {
+      try {
+        const json = JSON.stringify(this.calculators);
+        localStorage.setItem("calculators", json);
+        console.log('Calculadoras guardadas en localStorage');
+      } catch (error) {
+        console.error('Error guardando calculadoras:', error);
+      }
+    },
+    
+    loadCalculators() {
+      try {
+        const json = localStorage.getItem("calculators");
+        console.log('JSON cargado de localStorage:', json);
+        
+        if (json) {
+          const loaded = JSON.parse(json);
+          this.calculators = loaded.map(c => ({
+            ...c,
+            createdAt: new Date(c.createdAt),
+          }));
+          console.log('Calculadoras cargadas:', this.calculators);
+        } else {
+          console.log('No hay calculadoras guardadas');
+          this.calculators = [];
+        }
+      } catch (error) {
+        console.error('Error cargando calculadoras:', error);
+        this.calculators = [];
+      }
+    },
+    
     formatDate(date) {
-      if (!(date instanceof Date)) date = new Date(date);
-      return date.toLocaleDateString('es-PE', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      try {
+        if (!(date instanceof Date)) {
+          date = new Date(date);
+        }
+        
+        if (isNaN(date.getTime())) {
+          return 'Fecha inválida';
+        }
+        
+        return date.toLocaleDateString('es-PE', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return 'Fecha inválida';
+      }
     }
   }
 };
@@ -152,129 +216,101 @@ export default {
 
 <style scoped>
 .menu-container {
-  min-height: 100vh;
-  padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: "Work Sans", sans-serif;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 2rem;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #1e40af 75%, #3b82f6 100%);
+  padding: 2rem;
+  color: #e2e8f0;
 }
 
 .page-title {
   text-align: right;
-  margin-bottom: 0;
+  margin-bottom: 2rem;
   background: rgba(30, 41, 59, 0.8);
   color: #e2e8f0;
-  padding: 1rem;
-  display: inline-block;
-  align-self: flex-end;
+  padding: 1rem 2rem;
   border-radius: 12px;
   backdrop-filter: blur(15px);
   border: 1px solid rgba(59, 130, 246, 0.3);
   font-size: 1.5rem;
   font-weight: bold;
+  align-self: flex-end;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .toolbar-container {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: rgba(15, 23, 42, 0.7);
+  padding: 1rem 1.5rem;
+  border-radius: 16px;
   backdrop-filter: blur(15px);
-  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  margin-bottom: 2rem;
 }
 
 .toolbar-title {
   color: #e2e8f0;
-  margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 600;
 }
 
-.calculators-view {
-  width: 100%;
-  max-width: 1400px;
-  align-self: center;
+.calculators-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
 }
 
-:deep(.p-dataview-content) {
-  background: transparent !important;
-  border: none !important;
-}
-
-:deep(.p-paginator) {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-radius: 8px;
-  backdrop-filter: blur(10px);
-}
-
-:deep(.p-paginator .p-paginator-pages .p-paginator-page) {
-  color: #e2e8f0 !important;
+.calculator-card-wrapper {
+  animation: fadeInUp 0.6s ease-out;
 }
 
 .calculator-card {
-  height: 100%;
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  backdrop-filter: blur(15px);
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  color: #e2e8f0;
   transition: all 0.3s ease;
 }
 
 .calculator-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
-}
-
-:deep(.calculator-card .p-card-title) {
-  color: #e2e8f0 !important;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-}
-
-:deep(.calculator-card .p-card-subtitle) {
-  color: #cbd5e1 !important;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-}
-
-:deep(.calculator-card .p-card-content) {
-  color: #e2e8f0 !important;
-  padding-top: 0;
+  transform: translateY(-5px);
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.2);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #60a5fa;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+  padding-bottom: 0.5rem;
 }
 
 .card-icon {
-  color: #3b82f6;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
 }
 
 .card-date {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.card-date i {
-  color: #8b5cf6;
+  font-size: 0.85rem;
+  color: #94a3b8;
 }
 
 .card-stats {
+  margin: 1rem 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-
-.stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 0.75rem;
 }
 
 .stat-label {
@@ -283,117 +319,81 @@ export default {
 }
 
 .stat-value {
-  font-weight: 600;
   color: #e2e8f0;
 }
 
 .status-active {
-  color: #22c55e !important;
+  color: #4ade80;
+  font-weight: 600;
 }
 
 .card-actions {
   display: flex;
-  gap: 0.5rem;
   flex-wrap: wrap;
-}
-
-.card-actions .p-button {
-  flex: 1;
-  min-width: 120px;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
-  color: #e2e8f0;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 16px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(15px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  margin-top: 2rem;
 }
 
 .empty-icon {
   font-size: 4rem;
-  color: #8b5cf6;
+  color: #3b82f6;
   margin-bottom: 1rem;
 }
 
 .empty-state h3 {
   color: #e2e8f0;
-  margin-bottom: 1rem;
-  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .empty-state p {
-  color: #cbd5e1;
-  margin-bottom: 2rem;
-  font-size: 1.1rem;
+  max-width: 500px;
+  margin: 0 auto 1.5rem;
+  color: #94a3b8;
+  font-style: italic;
 }
 
-.calculator-card {
-  min-height: 250px;
-  min-width: 300px;
-  padding: 1.5rem;
-}
-
-/* Estilos para botones de PrimeVue en el contexto del fondo */
-:deep(.p-button.p-button-success) {
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
-  border-color: #22c55e !important;
-}
-
-:deep(.p-dataview.p-dataview-grid .p-dataview-content) {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-  padding: 1rem;
-}
-
-:deep(.p-button.p-button-success:hover) {
-  background: linear-gradient(135deg, #16a34a, #15803d) !important;
-  border-color: #16a34a !important;
-}
-
-:deep(.p-button.p-button-danger.p-button-outlined) {
-  color: #ef4444 !important;
-  border-color: #ef4444 !important;
-}
-
-:deep(.p-button.p-button-danger.p-button-outlined:hover) {
-  background: #ef4444 !important;
-  color: #ffffff !important;
-}
-
-:deep(.p-button.p-button-success.p-button-outlined) {
-  color: #22c55e !important;
-  border-color: #22c55e !important;
-}
-
-:deep(.p-dataview-grid .p-grid) {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-  padding: 1rem;
+/* Animación */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 768px) {
-  .menu-container {
-    padding: 1rem;
-    align-items: stretch;
-  }
-  
   .page-title {
-    align-self: stretch;
     text-align: center;
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
-  
-  .toolbar-title {
-    font-size: 1.1rem;
+
+  .calculators-grid {
+    grid-template-columns: 1fr;
   }
-  
+
   .card-actions {
     flex-direction: column;
   }
-  
+
   .card-actions .p-button {
-    min-width: unset;
-  } 
+    width: 100%;
+  }
 }
+
 </style>

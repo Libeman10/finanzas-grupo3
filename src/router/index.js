@@ -25,9 +25,13 @@ const router = createRouter({
           component: theRegisterPage  
         },
         {
-            path: '/cash-flow',
-            name: 'cash-flow',
-            component: cashFlowPage
+        path: '/cash-flow/:id',
+        name: 'CashFlow',
+        component: cashFlowPage,
+        props: true, 
+        meta: {
+        title: 'Cash Flow - BonosAlFallo'
+        }
         },
         {
             path: '/the-historial',
@@ -42,4 +46,12 @@ const router = createRouter({
 
     ],
 })
+
+router.beforeEach((to, from, next) => {
+  if (to.meta.title) {
+    document.title = to.meta.title
+  }
+  next()
+})
+
 export default router;

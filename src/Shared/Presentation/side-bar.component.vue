@@ -15,18 +15,18 @@ const navigateTo = (route) => {
   <div class="cash-flow-container">
     <pv-sidebar v-model:visible="visible" header="Menu" position="left">
       <div class="sidebar-menu">
-        <div class="menu-item" @click="navigateTo('/cash-flow')">
-          <i class="pi pi-money-bill"></i>
-          <span>Cash Flow</span>
+        <div class="menu-item" @click="navigateTo('/the-menu')">
+          <i class="pi pi-cog"></i>
+          <span>Menu</span>
         </div>
         <div class="menu-item" @click="navigateTo('/the-configuration')">
           <i class="pi pi-cog"></i>
-          <span>Configuration</span>
+          <span>Menu</span>
         </div>
       </div>
+      
     </pv-sidebar>
 
-    <!-- Botón flotante en la esquina superior izquierda -->
     <pv-button
       icon="pi pi-bars"
       @click="visible = true"
@@ -57,7 +57,6 @@ const navigateTo = (route) => {
   position: relative;
 }
 
-/* Estilo del botón flotante */
 .sidebar-toggle-button {
   position: fixed;
   top: 1rem;
