@@ -1,92 +1,122 @@
 <script setup>
-import { ref } from 'vue';
-import LanguageSwitcher from './language-switcher.component.vue';
+import { ref } from "vue";
+import { useRouter } from "vue-router";
 
-const loginSceneImg = 'https://media.licdn.com/dms/image/v2/C4E12AQFh91kuqmjmZA/article-cover_image-shrink_600_2000/article-cover_image-shrink_600_2000/0/1619844827937?e=2147483647&v=beta&t=7LYT6xLpgAdtu5YUyq6p_Q8UM9V9dNGXeqP-cqCVjoY';
-const username = ref('');
-const password = ref('');
+const router = useRouter();
+const name = ref("");
+const email = ref("");
+const password = ref("");
+const dni = ref("");
+
+const navigateRegister = () => {
+  router.push("/register");
+};
+
+const navigateCashFlow = () => {
+  router.push("/the-menu");
+};
 </script>
 
 <template>
-  <div class="login-container" :style="{ backgroundImage: `url(${loginSceneImg})` }">
+  <div class="login-container">
     <div class="login-card">
-      <div class="header-container">
-        <h1>Inicia sesion</h1>
-        <LanguageSwitcher class="language-switcher-header" />
-      </div>
-      <h2>Porfavor hazlo</h2>
-      
+      <h1 class="login-title">Iniciar Sesión</h1>
+
       <div class="form-container">
         <div class="input-group">
           <pv-float-label>
-            <pv-input-text id="username" v-model="username" />
-            <label for="username">Usuario</label>
+            <pv-input-text id="email" v-model="email" type="email" />
+            <label for="email">E-mail</label>
           </pv-float-label>
         </div>
+
         <div class="input-group">
           <pv-float-label>
-            <pv-input-text id="password" type="password" v-model="password" />
-            <label for="password">Contrasena</label>
+            <pv-input-text id="password" v-model="password" type="password" />
+            <label for="password">Contraseña</label>
           </pv-float-label>
         </div>
-        <router-link to="/the-menu">
-          <pv-button label="Iniciar Sesion" class="login-button" />
-        </router-link>
+
+        <pv-button
+          label="Ingresar"
+          class="login-button"
+          @click="navigateCashFlow"
+        />
       </div>
 
-      <div class="links">
-        <div class="signup">
-          <span>Sin cuenta?</span>
-          <router-link to="/register">Registrate</router-link>
-        </div>
-      </div>
+      <p class="redirect-register">
+        ¿No tienes cuenta?
+        <a @click.prevent="navigateRegister">Regístrate</a>
+      </p>
     </div>
   </div>
 </template>
 
 <style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap");
+
 .login-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #f8f9fa;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  font-family: "Work Sans", sans-serif;
+  background: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    #1e293b 25%,
+    #334155 50%,
+    #1e40af 75%,
+    #3b82f6 100%
+  );
+  padding: 1rem;
+}
+
+.redirect-register {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+  color: #cbd5e1;
+}
+
+.redirect-register a {
+  color: #3b82f6;
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.redirect-register a:hover {
+  color: #60a5fa;
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
-  background-color: #ffffff;
+  background: rgba(30, 41, 59, 0.8);
   padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  color: #e2e8f0;
 }
 
-h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  color: #333;
-  font-weight: 600;
-}
-
-h2 {
-  font-size: 1.5rem;
+.login-title {
+  font-size: 1.8rem;
+  font-weight: bold;
   margin-bottom: 2rem;
-  color: #666;
-  font-weight: 400;
+  text-align: center;
 }
 
 .form-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .input-group {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 :deep(.p-float-label) {
@@ -96,57 +126,28 @@ h2 {
 :deep(.p-inputtext) {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background-color: #1e293b;
+  color: #e2e8f0;
 }
 
-.language-switcher-login {
-  margin-top: 1rem;
-  display: flex;
-  justify-content: center;
-}
-
-.header-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.language-switcher-header {
-  margin-left: 1rem;
+:deep(.p-inputtext::placeholder) {
+  color: #94a3b8;
 }
 
 .login-button {
   width: 100%;
   padding: 0.75rem;
   margin-top: 1rem;
-  border-radius: 4px;
+  font-weight: bold;
+  background: #3b82f6;
+  color: white;
+  border-radius: 8px;
+  transition: background 0.3s;
 }
 
-.links {
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.signup {
-  display: flex;
-  gap: 0.5rem;
-}
-
-a {
-  color: #2196F3;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
-span {
-  color: #666;
+.login-button:hover {
+  background: #2563eb;
 }
 </style>

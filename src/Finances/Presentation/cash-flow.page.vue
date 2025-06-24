@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed } from "vue";
-import SideBar from "../../Shared/Presentation/side-bar.component.vue";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
 
 const bondData = ref({
   monto: 10000,
@@ -11,6 +13,23 @@ const bondData = ref({
   tasaEfectivaAnual: 5,
 });
 
+const backtomenu = () => {
+  router.push({ name: "TheMenu" });
+};
+
+const montoOptions = ref([
+  { label: "S/ 1,000", value: 1000 },
+  { label: "S/ 2,000", value: 2000 },
+  { label: "S/ 3,000", value: 3000 },
+  { label: "S/ 4,000", value: 4000 },
+  { label: "S/ 5,000", value: 5000 },
+  { label: "S/ 6,000", value: 6000 },
+  { label: "S/ 7,000", value: 7000 },
+  { label: "S/ 8,000", value: 8000 },
+  { label: "S/ 9,000", value: 9000 },
+  { label: "S/ 10,000", value: 10000 },
+]);
+
 const capitalizacionOptions = ref([
   { label: "Semestral", value: "semestral", periodos: 2 },
 ]);
@@ -18,7 +37,6 @@ const capitalizacionOptions = ref([
 const costosAdicionales = ref({
   costosEmisor: 0.44,
   comisionCasaBolsa: 0.3,
-  impuestos: 0.2,
 
   costosCavali: 0.052,
   costosEstructuracion: 0.01,
@@ -190,8 +208,7 @@ const calcularMetricas = () => {
 
   const totalCostosTREA =
     (costosAdicionales.value.costosEmisor / 100 +
-      costosAdicionales.value.comisionCasaBolsa / 100 +
-      costosAdicionales.value.impuestos / 100) *
+      costosAdicionales.value.comisionCasaBolsa / 100) *
     monto;
 
   const totalCostosTCEA =
@@ -276,9 +293,16 @@ calculateCashFlow();
 
 <template>
   <div class="cash-flow-container">
-    <SideBar />
-
     <div class="content">
+      <div class="back-button-container">
+        <pv-button
+          label="Volver al menú"
+          icon="pi pi-arrow-left"
+          @click="backtomenu"
+          class="back-button"
+        />
+      </div>
+
       <h1 class="page-title">Calculadora de Bonos - BonosAlFallo</h1>
 
       <div class="input-section">
@@ -287,12 +311,15 @@ calculateCashFlow();
         <div class="input-grid">
           <div class="input-group">
             <label for="monto">Monto del bono</label>
-            <pv-input-text
+            <pv-dropdown
               id="monto"
               v-model="bondData.monto"
-              type="number"
-              :min="0"
-              placeholder="10000"
+              :options="montoOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="Seleccionar monto"
+              @update:modelValue="calculateCashFlow"
+              class="w-full"
             />
           </div>
 
@@ -392,18 +419,6 @@ calculateCashFlow();
                   type="number"
                   step="0.01"
                   placeholder="0.3"
-                  @input="calculateCashFlow"
-                />
-              </div>
-
-              <div class="input-group">
-                <label for="impuestos">Impuestos (%)</label>
-                <pv-input-text
-                  id="impuestos"
-                  v-model="costosAdicionales.impuestos"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.2"
                   @input="calculateCashFlow"
                 />
               </div>
@@ -617,7 +632,6 @@ calculateCashFlow();
     </div>
   </div>
 </template>
-
 <style scoped>
 @import url("https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap");
 
@@ -638,6 +652,28 @@ calculateCashFlow();
     #3b82f6 100%
   );
   color: white;
+}
+
+.back-button-container {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+}
+
+.back-button {
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-weight: bold;
+  backdrop-filter: blur(15px);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.back-button:hover {
+  background: rgba(30, 41, 59, 1);
+  color: #ffffff;
+  border-color: rgba(96, 165, 250, 0.6);
 }
 
 .content {

@@ -1,32 +1,25 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router'
-import LanguageSwitcher from './language-switcher.component.vue';
+import { ref } from "vue";
+import { useRouter } from "vue-router";
 
-const backgroundImg = 'https://vannilo.com/wp-content/uploads/bonos-estado.jpg';
-const name = ref('');
-const email = ref('');
-const password = ref('');
-const dni = ref('');
+const router = useRouter();
+const name = ref("");
+const email = ref("");
+const password = ref("");
+const dni = ref("");
 
 const navigateCashFlow = () => {
-  router.push('/cash-flow')
-}
-
-
+  router.push("/the-menu");
+};
 </script>
 
 <template>
-  <div class="register-container" :style="{ backgroundImage: `url(${backgroundImg})` }">
+  <div class="register-container">
     <div class="register-card">
-      <div class="header-container">
-        <h1>Registrate</h1>
-        <LanguageSwitcher class="language-switcher-header" />
-      </div>
-      <h2>{{ $t('register.heading') }}</h2>
-      
+      <h1 class="register-title">Regístrate</h1>
+
       <div class="form-container">
-        <div class="input-group">   
+        <div class="input-group">
           <pv-float-label>
             <pv-input-text id="name" v-model="name" />
             <label for="name">Nombre</label>
@@ -43,7 +36,7 @@ const navigateCashFlow = () => {
         <div class="input-group">
           <pv-float-label>
             <pv-input-text id="password" v-model="password" type="password" />
-            <label for="password">Contrasena</label>
+            <label for="password">Contraseña</label>
           </pv-float-label>
         </div>
 
@@ -53,56 +46,72 @@ const navigateCashFlow = () => {
             <label for="dni">DNI</label>
           </pv-float-label>
         </div>
-        
-        <pv-button :label="$t('register.button')" class="register-button" @click="navigateCashFlow" />
+
+        <pv-button
+          :label="$t('register.button')"
+          class="register-button"
+          @click="navigateCashFlow"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap");
+
 .register-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #f8f9fa;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  font-family: "Work Sans", sans-serif;
+  background: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    #1e293b 25%,
+    #334155 50%,
+    #1e40af 75%,
+    #3b82f6 100%
+  );
+  padding: 1rem;
 }
 
 .register-card {
   width: 100%;
   max-width: 400px;
-  background-color: #ffffff;
+  background: rgba(30, 41, 59, 0.85);
   padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  color: #e2e8f0;
 }
 
-h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  color: #333;
-  font-weight: 600;
+.register-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+  text-align: center;
 }
 
-h2 {
-  font-size: 1.5rem;
-  margin-bottom: 2rem;
-  color: #666;
+.register-subtitle {
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: #cbd5e1;
   font-weight: 400;
 }
 
 .form-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .input-group {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 :deep(.p-float-label) {
@@ -112,25 +121,28 @@ h2 {
 :deep(.p-inputtext) {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+:deep(.p-inputtext::placeholder) {
+  color: #94a3b8;
 }
 
 .register-button {
   width: 100%;
   padding: 0.75rem;
   margin-top: 1rem;
-  border-radius: 4px;
+  font-weight: bold;
+  background: #3b82f6;
+  color: white;
+  border-radius: 8px;
+  transition: background 0.3s;
 }
 
-.header-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.language-switcher-header {
-  margin-left: 1rem;
+.register-button:hover {
+  background: #3472e5;
 }
 </style>
