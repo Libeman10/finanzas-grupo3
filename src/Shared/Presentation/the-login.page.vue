@@ -1,19 +1,36 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import axios from "axios";
 
 const router = useRouter();
-const name = ref("");
 const email = ref("");
 const password = ref("");
-const dni = ref("");
+const error = ref("");
 
 const navigateRegister = () => {
   router.push("/register");
 };
 
-const navigateCashFlow = () => {
-  router.push("/the-menu");
+const login = async () => {
+  try {
+    const response = await axios.get("http://localhost:3000/usuarios", {
+      params: {
+        email: email.value,
+        contrasena: password.value,
+      },
+    });
+
+    if (response.data.length > 0) {
+      console.log("Usuario autenticado:", response.data[0]);
+      router.push("/the-menu");
+    } else {
+      error.value = "Correo o contraseña incorrectos.";
+    }
+  } catch (err) {
+    console.error(err);
+    error.value = "Error al conectar con el servidor.";
+  }
 };
 </script>
 
@@ -37,13 +54,9 @@ const navigateCashFlow = () => {
           </pv-float-label>
         </div>
 
-        <pv-button
-          label="Ingresar"
-          class="login-button"
-          @click="navigateCashFlow"
-        />
+        <pv-button label="Ingresar" class="login-button" @click="login" />
       </div>
-
+      <p v-if="error" style="color: #f87171; margin-top: 1rem">{{ error }}</p>
       <p class="redirect-register">
         ¿No tienes cuenta?
         <a @click.prevent="navigateRegister">Regístrate</a>

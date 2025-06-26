@@ -1,48 +1,54 @@
 <template>
   <div class="menu-container">
-    <!-- Título de la página -->
-    <div class="page-title">
-      Calculadora de Bonos - BonosAlFallo
-    </div>
+    <div class="page-title">Calculadora de Bonos - BonosAlFallo</div>
 
-    <!-- Toolbar con botón para agregar nueva calculadora -->
     <pv-toolbar class="toolbar-container">
       <template #start>
-        <h2 class="toolbar-title">Mis Calculadoras ({{ calculators.length }})</h2>
+        <h2 class="toolbar-title">
+          Mis Calculadoras ({{ calculators.length }})
+        </h2>
       </template>
       <template #end>
-        <pv-button 
-          @click="addNewCalculator" 
-          icon="pi pi-plus" 
-          label="Nueva Calculadora"
-          class="p-button-success"
-          raised
-        />
+        <div class="toolbar-buttons">
+          <pv-button
+            @click="addNewCalculator"
+            icon="pi pi-plus"
+            label="Nueva Calculadora"
+            class="p-button-success"
+            raised
+          />
+          <pv-button
+            @click="logout"
+            icon="pi pi-sign-out"
+            label="Cerrar sesión"
+            class="p-button-secondary"
+            raised
+          />
+        </div>
       </template>
     </pv-toolbar>
 
-    <!-- Grid de calculadoras usando CSS Grid -->
     <div v-if="calculators.length > 0" class="calculators-grid">
-      <div 
-        v-for="calculator in calculators" 
-        :key="calculator.id" 
+      <div
+        v-for="calculator in calculators"
+        :key="calculator.id"
         class="calculator-card-wrapper"
       >
         <pv-card class="calculator-card">
           <template #title>
             <div class="card-header">
               <i class="pi pi-calculator card-icon"></i>
-              <span>{{ calculator.name || 'Sin nombre' }}</span>
+              <span>{{ calculator.name || "Sin nombre" }}</span>
             </div>
           </template>
-          
+
           <template #subtitle>
             <div class="card-date">
               <i class="pi pi-calendar"></i>
               <span>{{ formatDate(calculator.createdAt) }}</span>
             </div>
           </template>
-          
+
           <template #content>
             <div class="card-stats">
               <div class="stat-item">
@@ -55,26 +61,19 @@
               </div>
             </div>
           </template>
-          
+
           <template #footer>
             <div class="card-actions">
-              <pv-button 
+              <pv-button
                 @click="goToCashFlow(calculator.id)"
-                icon="pi pi-arrow-right" 
+                icon="pi pi-arrow-right"
                 label="Ir a Cash Flow"
                 class="p-button-primary"
                 size="small"
               />
-              <pv-button 
-                @click="downloadExcel(calculator.id)"
-                icon="pi pi-file-excel" 
-                label="Excel"
-                class="p-button-success p-button-outlined"
-                size="small"
-              />
-              <pv-button 
+              <pv-button
                 @click="deleteCalculator(calculator.id)"
-                icon="pi pi-trash" 
+                icon="pi pi-trash"
                 class="p-button-danger p-button-outlined"
                 size="small"
               />
@@ -84,21 +83,21 @@
       </div>
     </div>
 
-    <!-- Estado vacío -->
     <div v-else class="empty-state">
       <i class="pi pi-calculator empty-icon"></i>
       <h3>No hay calculadoras creadas</h3>
-      <p>Haz clic en "Nueva Calculadora" para crear tu primera calculadora de bonos</p>
-      <pv-button 
+      <p>
+        Haz clic en "Nueva Calculadora" para crear tu primera calculadora de
+        bonos
+      </p>
+      <pv-button
         @click="addNewCalculator"
-        icon="pi pi-plus" 
+        icon="pi pi-plus"
         label="Crear Primera Calculadora"
         class="p-button-success"
         raised
       />
     </div>
-
-
   </div>
 </template>
 
@@ -108,109 +107,123 @@ export default {
   data() {
     return {
       calculators: [],
-      showDebug: false, // Deshabilitado
+      showDebug: false,
     };
   },
   mounted() {
     this.loadCalculators();
   },
   methods: {
+    logout() {
+      localStorage.removeItem("currentCalculatorId");
+      localStorage.removeItem("calculators");
+
+      if (this.$router) {
+        this.$router.push({ name: "home" });
+      } else {
+        window.location.href = "/";
+      }
+    },
+
     addNewCalculator() {
       const newCalculator = {
         id: Date.now(),
         name: `Calculadora ${this.calculators.length + 1}`,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
-      
+
       this.calculators.push(newCalculator);
       this.saveCalculators();
     },
-    
+
     goToCashFlow(calculatorId) {
       // Guardar el ID de la calculadora actual en localStorage
-      localStorage.setItem('currentCalculatorId', calculatorId);
-      
+      localStorage.setItem("currentCalculatorId", calculatorId);
+
       if (this.$router) {
         this.$router.push({
-          name: 'CashFlow',
-          params: { id: calculatorId }
+          name: "CashFlow",
+          params: { id: calculatorId },
         });
       } else {
-
         window.location.href = `/cash-flow?id=${calculatorId}`;
       }
     },
-    
+
     downloadExcel(calculatorId) {
-      console.log('Descargando Excel para calculadora:', calculatorId);
-      alert(`Función de descarga Excel para calculadora ${calculatorId} - Por implementar`);
+      console.log("Descargando Excel para calculadora:", calculatorId);
+      alert(
+        `Función de descarga Excel para calculadora ${calculatorId} - Por implementar`
+      );
     },
-    
+
     deleteCalculator(calculatorId) {
-      console.log('Eliminando calculadora:', calculatorId);
-      
-      if (confirm('¿Estás seguro de que quieres eliminar esta calculadora?')) {
-        this.calculators = this.calculators.filter(calc => calc.id !== calculatorId);
+      console.log("Eliminando calculadora:", calculatorId);
+
+      if (confirm("¿Estás seguro de que quieres eliminar esta calculadora?")) {
+        this.calculators = this.calculators.filter(
+          (calc) => calc.id !== calculatorId
+        );
         this.saveCalculators();
-        console.log('Calculadora eliminada. Lista actual:', this.calculators);
+        console.log("Calculadora eliminada. Lista actual:", this.calculators);
       }
     },
-    
+
     saveCalculators() {
       try {
         const json = JSON.stringify(this.calculators);
         localStorage.setItem("calculators", json);
-        console.log('Calculadoras guardadas en localStorage');
+        console.log("Calculadoras guardadas en localStorage");
       } catch (error) {
-        console.error('Error guardando calculadoras:', error);
+        console.error("Error guardando calculadoras:", error);
       }
     },
-    
+
     loadCalculators() {
       try {
         const json = localStorage.getItem("calculators");
-        console.log('JSON cargado de localStorage:', json);
-        
+        console.log("JSON cargado de localStorage:", json);
+
         if (json) {
           const loaded = JSON.parse(json);
-          this.calculators = loaded.map(c => ({
+          this.calculators = loaded.map((c) => ({
             ...c,
             createdAt: new Date(c.createdAt),
           }));
-          console.log('Calculadoras cargadas:', this.calculators);
+          console.log("Calculadoras cargadas:", this.calculators);
         } else {
-          console.log('No hay calculadoras guardadas');
+          console.log("No hay calculadoras guardadas");
           this.calculators = [];
         }
       } catch (error) {
-        console.error('Error cargando calculadoras:', error);
+        console.error("Error cargando calculadoras:", error);
         this.calculators = [];
       }
     },
-    
+
     formatDate(date) {
       try {
         if (!(date instanceof Date)) {
           date = new Date(date);
         }
-        
+
         if (isNaN(date.getTime())) {
-          return 'Fecha inválida';
+          return "Fecha inválida";
         }
-        
-        return date.toLocaleDateString('es-PE', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+
+        return date.toLocaleDateString("es-PE", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
         });
       } catch (error) {
-        console.error('Error formateando fecha:', error);
-        return 'Fecha inválida';
+        console.error("Error formateando fecha:", error);
+        return "Fecha inválida";
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -220,7 +233,14 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #1e40af 75%, #3b82f6 100%);
+  background: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    #1e293b 25%,
+    #334155 50%,
+    #1e40af 75%,
+    #3b82f6 100%
+  );
   padding: 2rem;
   color: #e2e8f0;
 }
@@ -365,7 +385,12 @@ export default {
   font-style: italic;
 }
 
-/* Animación */
+.toolbar-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -395,5 +420,4 @@ export default {
     width: 100%;
   }
 }
-
 </style>

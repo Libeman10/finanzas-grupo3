@@ -5,7 +5,6 @@ import Lara from "@primeuix/themes/lara";
 import Card from "primevue/card";
 import FloatLabel from "primevue/floatlabel";
 import SelectButton from "primevue/selectbutton";
-import i18n from "./i18n";
 import Button from "primevue/button";
 import InputText from "primevue/inputtext";
 import Divider from "primevue/divider";
@@ -50,6 +49,5 @@ app.component("pv-toolbar", Toolbar);
 app.component("pv-icon-field", IconField);
 app.component("pv-input-icon", InputIcon);
 
-app.use(i18n);
 app.use(router);
 app.mount("#app");

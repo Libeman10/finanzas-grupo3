@@ -1,0 +1,25 @@
+{
+  "usuarios": [
+    {
+      "id": "1",
+      "nombre": "Juan Pérez",
+      "email": "juan.perez@example.com",
+      "contrasena": "Password123!",
+      "dni": "12345678"
+    },
+    {
+      "id": "6b67",
+      "nombre": "Pedro Picapiedra",
+      "email": "picapiedra3458@gmail.com",
+      "contrasena": "waza1234",
+      "dni": "8174133132"
+    },
+    {
+      "id": "5416",
+      "nombre": "Obreron",
+      "email": "obrerongamer1234@gmail.com",
+      "contrasena": "obreron",
+      "dni": "313414142"
+    }
+  ]
+}

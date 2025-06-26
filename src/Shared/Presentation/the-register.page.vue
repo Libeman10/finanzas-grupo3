@@ -1,15 +1,56 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import axios from "axios";
 
 const router = useRouter();
 const name = ref("");
 const email = ref("");
 const password = ref("");
 const dni = ref("");
+const error = ref("");
+const success = ref("");
 
 const navigateCashFlow = () => {
   router.push("/the-menu");
+};
+
+const register = async () => {
+  error.value = "";
+  success.value = "";
+
+  if (!name.value || !email.value || !password.value || !dni.value) {
+    error.value = "Por favor completa todos los campos.";
+    return;
+  }
+
+  try {
+    const existingUser = await axios.get("http://localhost:3000/usuarios", {
+      params: { email: email.value },
+    });
+
+    if (existingUser.data.length > 0) {
+      error.value = "Este correo ya está registrado.";
+      return;
+    }
+
+    // Registrar usuario
+    const nuevoUsuario = {
+      nombre: name.value,
+      email: email.value,
+      contrasena: password.value,
+      dni: dni.value,
+    };
+
+    await axios.post("http://localhost:3000/usuarios", nuevoUsuario);
+
+    success.value = "Usuario registrado con éxito.";
+
+    router.push("/the-menu");
+  } catch (err) {
+    error.value = "Ocurrió un error al registrar el usuario.";
+    console.error(err);
+  }
 };
 </script>
 
@@ -46,12 +87,15 @@ const navigateCashFlow = () => {
             <label for="dni">DNI</label>
           </pv-float-label>
         </div>
-
         <pv-button
-          :label="$t('register.button')"
+          :label="'Registrarse'"
           class="register-button"
-          @click="navigateCashFlow"
+          @click="register"
         />
+        <p v-if="error" style="color: #f87171; margin-top: 1rem">{{ error }}</p>
+        <p v-if="success" style="color: #4ade80; margin-top: 1rem">
+          {{ success }}
+        </p>
       </div>
     </div>
   </div>
