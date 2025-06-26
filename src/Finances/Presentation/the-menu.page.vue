@@ -137,7 +137,6 @@ export default {
     },
 
     goToCashFlow(calculatorId) {
-      // Guardar el ID de la calculadora actual en localStorage
       localStorage.setItem("currentCalculatorId", calculatorId);
 
       if (this.$router) {

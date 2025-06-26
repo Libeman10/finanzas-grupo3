@@ -942,7 +942,6 @@ calculateCashFlow();
   font-weight: 500;
 }
 
-/* Tasa input específico */
 .rate-section .input-group {
   background: rgba(30, 41, 59, 0.5);
   padding: 1rem;
@@ -958,7 +957,6 @@ calculateCashFlow();
   box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
 }
 
-/* Estilos para PrimeVue */
 :deep(.p-datatable) {
   background: rgba(15, 23, 42, 0.8);
   width: 100%;
@@ -1087,7 +1085,6 @@ calculateCashFlow();
   border-radius: 8px;
 }
 
-/* Scrollbar personalizada */
 :deep(.p-datatable-scrollable-body::-webkit-scrollbar) {
   width: 8px;
   height: 8px;
@@ -1137,7 +1134,6 @@ calculateCashFlow();
   }
 }
 
-/* Animaciones adicionales */
 @keyframes fadeInUp {
   from {
     opacity: 0;

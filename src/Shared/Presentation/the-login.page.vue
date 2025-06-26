@@ -14,12 +14,15 @@ const navigateRegister = () => {
 
 const login = async () => {
   try {
-    const response = await axios.get("http://localhost:3000/usuarios", {
-      params: {
-        email: email.value,
-        contrasena: password.value,
-      },
-    });
+    const response = await axios.get(
+      "https://685d7a9a769de2bf0860ce73.mockapi.io/api/test/usuarios",
+      {
+        params: {
+          email: email.value,
+          contrasena: password.value,
+        },
+      }
+    );
 
     if (response.data.length > 0) {
       console.log("Usuario autenticado:", response.data[0]);

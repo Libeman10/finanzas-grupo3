@@ -25,16 +25,19 @@ const register = async () => {
   }
 
   try {
-    const existingUser = await axios.get("http://localhost:3000/usuarios", {
-      params: { email: email.value },
-    });
+    const response = await axios.get(
+      "https://685d7a9a769de2bf0860ce73.mockapi.io/api/test/usuarios"
+    );
 
-    if (existingUser.data.length > 0) {
+    const alreadyExists = response.data.find(
+      (u) => u.email.toLowerCase() === email.value.toLowerCase()
+    );
+
+    if (alreadyExists) {
       error.value = "Este correo ya está registrado.";
       return;
     }
 
-    // Registrar usuario
     const nuevoUsuario = {
       nombre: name.value,
       email: email.value,
@@ -42,10 +45,14 @@ const register = async () => {
       dni: dni.value,
     };
 
-    await axios.post("http://localhost:3000/usuarios", nuevoUsuario);
+    const res = await axios.post(
+      "https://685d7a9a769de2bf0860ce73.mockapi.io/api/test/usuarios",
+      nuevoUsuario
+    );
+
+    console.log("Usuario registrado:", res.data);
 
     success.value = "Usuario registrado con éxito.";
-
     router.push("/the-menu");
   } catch (err) {
     error.value = "Ocurrió un error al registrar el usuario.";
