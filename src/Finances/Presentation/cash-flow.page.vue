@@ -35,12 +35,10 @@ const capitalizacionOptions = ref([
 ]);
 
 const costosAdicionales = ref({
-  costosEmisor: 0.44,
   comisionCasaBolsa: 0.3,
-
   costosCavali: 0.052,
   costosEstructuracion: 0.01,
-  costosColocacion: 0.15,
+  costosColocacion: 0.011,
 });
 
 const cashFlowData = ref([]);
@@ -56,12 +54,95 @@ const metrics = ref({
   tasaRendimientoEfectivoAnual: 0,
   convexidad: 0,
   duracion: 0,
-
   totalCostosTREA: 0,
   totalCostosTCEA: 0,
   tasaEfectivaPeriodo: 0,
   periodosAnio: 2,
 });
+
+const validateInputData = () => {
+  const monto = parseFloat(bondData.value.monto) || 0;
+  const tasaAnual = bondData.value.usarTasaEfectiva
+    ? parseFloat(bondData.value.tasaEfectivaAnual) || 0
+    : parseFloat(bondData.value.interes) || 0;
+  const plazoAnios = parseFloat(bondData.value.plazo) || 0;
+
+  const comisionCasaBolsa =
+    parseFloat(costosAdicionales.value.comisionCasaBolsa) || 0;
+  const costosCavali = parseFloat(costosAdicionales.value.costosCavali) || 0;
+  const costosEstructuracion =
+    parseFloat(costosAdicionales.value.costosEstructuracion) || 0;
+  const costosColocacion =
+    parseFloat(costosAdicionales.value.costosColocacion) || 0;
+
+  if (monto <= 0) {
+    alert(
+      "❌ Error en Monto del Bono\n\nPor favor seleccione un monto válido del listado disponible."
+    );
+    return false;
+  }
+
+  if (plazoAnios <= 0 || plazoAnios > 50) {
+    alert(
+      "❌ Error en Plazo del Bono\n\nEl plazo debe ser mayor a 0 años y no exceder los 50 años.\nValor ingresado: " +
+        plazoAnios +
+        " años"
+    );
+    return false;
+  }
+
+  if (tasaAnual < 2.5 || tasaAnual > 8) {
+    const tipoTasa = bondData.value.usarTasaEfectiva
+      ? "Efectiva Anual"
+      : "Nominal Anual";
+    alert(
+      "❌ Error en Tasa " +
+        tipoTasa +
+        "\n\nLa tasa debe estar entre 2.5% y 8.0%.\nValor ingresado: " +
+        tasaAnual +
+        "%"
+    );
+    return false;
+  }
+
+  if (comisionCasaBolsa < 0) {
+    alert(
+      "❌ Error en Comisión Casa de Bolsa\n\nLa comisión no puede ser negativa.\nValor ingresado: " +
+        comisionCasaBolsa +
+        "%"
+    );
+    return false;
+  }
+
+  if (costosCavali < 0) {
+    alert(
+      "❌ Error en Costos CAVALI\n\nLos costos CAVALI no pueden ser negativos.\nValor ingresado: " +
+        costosCavali +
+        "%"
+    );
+    return false;
+  }
+
+  if (costosEstructuracion < 0.01 || costosEstructuracion > 0.015) {
+    alert(
+      "❌ Error en Costos de Estructuración\n\nLos costos de estructuración deben estar entre 0.10% y 0.15%.\nRango permitido: 0.10% - 0.15%\nValor ingresado: " +
+        costosEstructuracion +
+        "%"
+    );
+    return false;
+  }
+
+  if (costosColocacion < 0.011 || costosColocacion > 0.016) {
+    alert(
+      "❌ Error en Costos de Colocación\n\nLos costos de colocación deben estar entre 0.11% y 0.16%.\nRango permitido: 0.11% - 0.16%\nValor ingresado: " +
+        costosColocacion +
+        "%"
+    );
+    return false;
+  }
+
+  return true;
+};
 
 const getTasaSemestral = (tasaAnual, usarTasaEfectiva = false) => {
   const tasa = tasaAnual / 100;
@@ -85,25 +166,17 @@ const calcularCuotaFrancesa = (capital, tasa, periodos) => {
 };
 
 const calculateCashFlow = () => {
-  const monto = parseFloat(bondData.value.monto) || 0;
-  const tasaAnual = bondData.value.usarTasaEfectiva
-    ? parseFloat(bondData.value.tasaEfectivaAnual) || 0
-    : parseFloat(bondData.value.interes) || 0;
-  const plazoAnios = parseFloat(bondData.value.plazo) || 0;
-  const usarTasaEfectiva = bondData.value.usarTasaEfectiva;
-
-  if (
-    monto <= 0 ||
-    plazoAnios <= 0 ||
-    plazoAnios > 50 ||
-    tasaAnual < 2.5 ||
-    tasaAnual > 8
-  ) {
-    alert(
-      "Por favor ingrese una tasa de interés entre 2.5% y 8%, y valores válidos para el resto de campos."
-    );
+  // Validar datos antes de calcular
+  if (!validateInputData()) {
     return;
   }
+
+  const monto = parseFloat(bondData.value.monto);
+  const tasaAnual = bondData.value.usarTasaEfectiva
+    ? parseFloat(bondData.value.tasaEfectivaAnual)
+    : parseFloat(bondData.value.interes);
+  const plazoAnios = parseFloat(bondData.value.plazo);
+  const usarTasaEfectiva = bondData.value.usarTasaEfectiva;
 
   const tasaSemestral = getTasaSemestral(tasaAnual, usarTasaEfectiva);
   const periodosSemestrales = getPeriodosSemestrales(plazoAnios);
@@ -207,7 +280,7 @@ const calcularMetricas = () => {
   const tasaSemestral = metrics.value.tasaEfectivaPeriodo;
 
   const totalCostosTREA =
-    (costosAdicionales.value.costosEmisor / 100 +
+    (costosAdicionales.value.costosCavali / 100 +
       costosAdicionales.value.comisionCasaBolsa / 100) *
     monto;
 
@@ -266,7 +339,9 @@ const calcularMetricas = () => {
 
 const updateGracePeriod = (rowData, newValue) => {
   rowData.plazoGracia = newValue;
-  calculateCashFlow();
+  if (cashFlowData.value.length > 0) {
+    calculateCashFlow();
+  }
 };
 
 const capitalizacionInfo = computed(() => {
@@ -287,8 +362,6 @@ const capitalizacionInfo = computed(() => {
     tasaSemestral * 100
   ).toFixed(4)}% | Períodos semestrales: ${periodos}`;
 });
-
-calculateCashFlow();
 </script>
 
 <template>
@@ -318,7 +391,6 @@ calculateCashFlow();
               option-label="label"
               option-value="value"
               placeholder="Seleccionar monto"
-              @update:modelValue="calculateCashFlow"
               class="w-full"
             />
           </div>
@@ -332,7 +404,6 @@ calculateCashFlow();
               step="0.5"
               :min="0.5"
               placeholder="3"
-              @input="calculateCashFlow"
             />
           </div>
 
@@ -342,7 +413,6 @@ calculateCashFlow();
                 id="usarTasaEfectiva"
                 v-model="bondData.usarTasaEfectiva"
                 :binary="true"
-                @change="calculateCashFlow"
               />
               <label for="usarTasaEfectiva">Usar Tasa Efectiva Anual</label>
             </div>
@@ -360,7 +430,6 @@ calculateCashFlow();
               :min="2.5"
               :max="8.0"
               placeholder="5.0"
-              @input="calculateCashFlow"
             />
           </div>
 
@@ -374,19 +443,8 @@ calculateCashFlow();
               :min="2.5"
               :max="8.0"
               placeholder="5.0"
-              @input="calculateCashFlow"
             />
           </div>
-        </div>
-
-        <div class="capitalization-info" v-if="capitalizacionInfo">
-          <p>
-            <strong>Información de Capitalización:</strong>
-            {{ capitalizacionInfo }}
-          </p>
-          <p>
-            <em>Nota: El flujo de caja se calculará en períodos semestrales</em>
-          </p>
         </div>
       </div>
 
@@ -398,14 +456,13 @@ calculateCashFlow();
             <h3>Para TREA (Tasa de Rendimiento)</h3>
             <div class="cost-inputs">
               <div class="input-group">
-                <label for="costosEmisor">Costos del Emisor (%)</label>
+                <label for="costosCavali">Costos CAVALI (%)</label>
                 <pv-input-text
-                  id="costosEmisor"
-                  v-model="costosAdicionales.costosEmisor"
+                  id="costosCavali"
+                  v-model="costosAdicionales.costosCavali"
                   type="number"
                   step="0.01"
-                  placeholder="0.5"
-                  @input="calculateCashFlow"
+                  placeholder="0.052"
                 />
               </div>
 
@@ -419,7 +476,6 @@ calculateCashFlow();
                   type="number"
                   step="0.01"
                   placeholder="0.3"
-                  @input="calculateCashFlow"
                 />
               </div>
             </div>
@@ -435,34 +491,37 @@ calculateCashFlow();
                   v-model="costosAdicionales.costosCavali"
                   type="number"
                   step="0.01"
-                  placeholder="0.1"
-                  @input="calculateCashFlow"
+                  placeholder="0.052"
                 />
               </div>
 
               <div class="input-group">
                 <label for="costosEstructuracion"
-                  >Costos de Estructuración (%)</label
+                  >Costos de Estructuración (%) [0.010-0.015]</label
                 >
                 <pv-input-text
                   id="costosEstructuracion"
                   v-model="costosAdicionales.costosEstructuracion"
                   type="number"
                   step="0.01"
-                  placeholder="0.4"
-                  @input="calculateCashFlow"
+                  :min="0.01"
+                  :max="0.015"
+                  placeholder="0.10"
                 />
               </div>
 
               <div class="input-group">
-                <label for="costosColocacion">Costos de Colocación (%)</label>
+                <label for="costosColocacion"
+                  >Costos de Colocación (%) [0.011-0.016]</label
+                >
                 <pv-input-text
                   id="costosColocacion"
                   v-model="costosAdicionales.costosColocacion"
                   type="number"
                   step="0.01"
-                  placeholder="0.6"
-                  @input="calculateCashFlow"
+                  :min="0.011"
+                  :max="0.016"
+                  placeholder="0.11"
                 />
               </div>
             </div>
@@ -479,7 +538,7 @@ calculateCashFlow();
         </div>
       </div>
 
-      <div class="table-container">
+      <div class="table-container" v-if="cashFlowData.length > 0">
         <h3>Flujo de Caja Semestral</h3>
         <pv-data-table
           :value="cashFlowData"
@@ -632,6 +691,7 @@ calculateCashFlow();
     </div>
   </div>
 </template>
+
 <style scoped>
 @import url("https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap");
 

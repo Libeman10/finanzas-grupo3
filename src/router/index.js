@@ -3,7 +3,6 @@ import TheHome from "../Shared/Presentation/home-view.page.vue";
 import theLoginPage from "../Shared/Presentation/the-login.page.vue";
 import theRegisterPage from "../Shared/Presentation/the-register.page.vue";
 import cashFlowPage from "../Finances/Presentation/cash-flow.page.vue";
-import theHistorialPage from "@/Finances/Presentation/the-historial.page.vue";
 import theMenuPage from "@/Finances/Presentation/the-menu.page.vue";
 
 const router = createRouter({
@@ -32,11 +31,6 @@ const router = createRouter({
       meta: {
         title: "Cash Flow - BonosAlFallo",
       },
-    },
-    {
-      path: "/the-historial",
-      name: "the-historial",
-      component: theHistorialPage,
     },
     {
       path: "/the-menu",
