@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
+import CurrencySelector from "./currency-selector.vue";
 
 const router = useRouter();
+const selectedCurrency = ref("PEN");
 
 const bondData = ref({
   monto: 10000,
@@ -18,16 +20,16 @@ const backtomenu = () => {
 };
 
 const montoOptions = ref([
-  { label: "S/ 1,000", value: 1000 },
-  { label: "S/ 2,000", value: 2000 },
-  { label: "S/ 3,000", value: 3000 },
-  { label: "S/ 4,000", value: 4000 },
-  { label: "S/ 5,000", value: 5000 },
-  { label: "S/ 6,000", value: 6000 },
-  { label: "S/ 7,000", value: 7000 },
-  { label: "S/ 8,000", value: 8000 },
-  { label: "S/ 9,000", value: 9000 },
-  { label: "S/ 10,000", value: 10000 },
+  { label: "1,000", value: 1000 },
+  { label: "2,000", value: 2000 },
+  { label: "3,000", value: 3000 },
+  { label: "4,000", value: 4000 },
+  { label: "5,000", value: 5000 },
+  { label: "6,000", value: 6000 },
+  { label: "7,000", value: 7000 },
+  { label: "8,000", value: 8000 },
+  { label: "9,000", value: 9000 },
+  { label: "10,000", value: 10000 },
 ]);
 
 const capitalizacionOptions = ref([
@@ -82,9 +84,9 @@ const validateInputData = () => {
     return false;
   }
 
-  if (plazoAnios <= 0 || plazoAnios > 50) {
+  if (plazoAnios <= 3 || plazoAnios > 20) {
     alert(
-      "❌ Error en Plazo del Bono\n\nEl plazo debe ser mayor a 0 años y no exceder los 50 años.\nValor ingresado: " +
+      "❌ Error en Plazo del Bono\n\nEl plazo debe ser mayor a 3 años y no exceder los 20 años.\nValor ingresado: " +
         plazoAnios +
         " años"
     );
@@ -166,7 +168,6 @@ const calcularCuotaFrancesa = (capital, tasa, periodos) => {
 };
 
 const calculateCashFlow = () => {
-  // Validar datos antes de calcular
   if (!validateInputData()) {
     return;
   }
@@ -380,7 +381,12 @@ const capitalizacionInfo = computed(() => {
 
       <div class="input-section">
         <h2>Datos de entrada</h2>
-
+        <div class="input-group">
+          <CurrencySelector
+            v-model="selectedCurrency"
+            :options="['PEN', 'USD', 'EUR']"
+          />
+        </div>
         <div class="input-grid">
           <div class="input-group">
             <label for="monto">Monto del bono</label>
@@ -402,7 +408,8 @@ const capitalizacionInfo = computed(() => {
               v-model="bondData.plazo"
               type="number"
               step="0.5"
-              :min="0.5"
+              :min="3"
+              :max="20"
               placeholder="3"
             />
           </div>
@@ -562,7 +569,7 @@ const capitalizacionInfo = computed(() => {
               {{
                 slotProps.data.saldoInicial.toLocaleString("es-PE", {
                   style: "currency",
-                  currency: "PEN",
+                  currency: selectedCurrency,
                   minimumFractionDigits: 2,
                 })
               }}
@@ -573,7 +580,7 @@ const capitalizacionInfo = computed(() => {
               {{
                 slotProps.data.interes.toLocaleString("es-PE", {
                   style: "currency",
-                  currency: "PEN",
+                  currency: selectedCurrency,
                   minimumFractionDigits: 2,
                 })
               }}
@@ -584,7 +591,7 @@ const capitalizacionInfo = computed(() => {
               {{
                 slotProps.data.cuota.toLocaleString("es-PE", {
                   style: "currency",
-                  currency: "PEN",
+                  currency: selectedCurrency,
                   minimumFractionDigits: 2,
                 })
               }}
@@ -599,7 +606,7 @@ const capitalizacionInfo = computed(() => {
               {{
                 slotProps.data.amortizacion.toLocaleString("es-PE", {
                   style: "currency",
-                  currency: "PEN",
+                  currency: selectedCurrency,
                   minimumFractionDigits: 2,
                 })
               }}
@@ -614,7 +621,7 @@ const capitalizacionInfo = computed(() => {
               {{
                 slotProps.data.saldoFinal.toLocaleString("es-PE", {
                   style: "currency",
-                  currency: "PEN",
+                  currency: selectedCurrency,
                   minimumFractionDigits: 2,
                 })
               }}
