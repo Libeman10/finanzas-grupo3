@@ -5,6 +5,7 @@ import CurrencySelector from "./currency-selector.vue";
 
 const router = useRouter();
 const selectedCurrency = ref("PEN");
+const cok = ref(5);
 
 const bondData = ref({
   monto: 10000,
@@ -39,8 +40,8 @@ const capitalizacionOptions = ref([
 const costosAdicionales = ref({
   comisionCasaBolsa: 0.3,
   costosCavali: 0.052,
-  costosEstructuracion: 0.01,
-  costosColocacion: 0.011,
+  costosEstructuracion: 0.1,
+  costosColocacion: 0.15,
 });
 
 const cashFlowData = ref([]);
@@ -84,7 +85,7 @@ const validateInputData = () => {
     return false;
   }
 
-  if (plazoAnios <= 3 || plazoAnios > 20) {
+  if (plazoAnios < 3 || plazoAnios > 20) {
     alert(
       "❌ Error en Plazo del Bono\n\nEl plazo debe ser mayor a 3 años y no exceder los 20 años.\nValor ingresado: " +
         plazoAnios +
@@ -125,7 +126,7 @@ const validateInputData = () => {
     return false;
   }
 
-  if (costosEstructuracion < 0.01 || costosEstructuracion > 0.015) {
+  if (costosEstructuracion < 0.1 || costosEstructuracion > 0.15) {
     alert(
       "❌ Error en Costos de Estructuración\n\nLos costos de estructuración deben estar entre 0.10% y 0.15%.\nRango permitido: 0.10% - 0.15%\nValor ingresado: " +
         costosEstructuracion +
@@ -134,7 +135,7 @@ const validateInputData = () => {
     return false;
   }
 
-  if (costosColocacion < 0.011 || costosColocacion > 0.016) {
+  if (costosColocacion < 0.11 || costosColocacion > 0.16) {
     alert(
       "❌ Error en Costos de Colocación\n\nLos costos de colocación deben estar entre 0.11% y 0.16%.\nRango permitido: 0.11% - 0.16%\nValor ingresado: " +
         costosColocacion +
@@ -145,6 +146,49 @@ const validateInputData = () => {
 
   return true;
 };
+
+const precioBono = computed(() => {
+  if (cashFlowData.value.length === 0) return 0;
+
+  const tasaCok = cok.value / 100;
+  const flujos = cashFlowData.value;
+  const valorNominal = parseFloat(bondData.value.monto);
+  let precio = 0;
+
+  console.log("📊 Flujos utilizados para calcular el Precio del Bono:");
+  console.table(
+    flujos.map((f, i) => ({
+      Periodo: i + 1,
+      Cuota: f.cuota,
+      Interés: f.interes,
+      Amortización: f.amortizacion,
+      SaldoInicial: f.saldoInicial,
+      SaldoFinal: f.saldoFinal,
+      PlazoGracia: f.plazoGracia,
+    }))
+  );
+
+  flujos.forEach((flujo, index) => {
+    const t = index + 1;
+    const descuento = flujo.cuota / Math.pow(1 + tasaCok, t);
+    console.log(
+      `🧮 t=${t}, Cuota=${flujo.cuota}, Descuento=${descuento.toFixed(2)}`
+    );
+    precio += descuento;
+  });
+
+  const n = flujos.length;
+  const valorNominalDescontado = valorNominal / Math.pow(1 + tasaCok, n);
+  console.log(
+    `🏁 Valor nominal descontado (t=${n}): ${valorNominalDescontado.toFixed(2)}`
+  );
+
+  precio += valorNominalDescontado;
+
+  console.log(`✅ Precio final del bono calculado: ${precio.toFixed(2)}`);
+
+  return parseFloat(precio.toFixed(2));
+});
 
 const getTasaSemestral = (tasaAnual, usarTasaEfectiva = false) => {
   const tasa = tasaAnual / 100;
@@ -294,26 +338,35 @@ const calcularMetricas = () => {
   metrics.value.totalCostosTREA = totalCostosTREA;
   metrics.value.totalCostosTCEA = totalCostosTCEA;
 
-  const montoConCostosTCEA = monto + totalCostosTCEA;
+  const montoConCostosTCEA = monto + totalCostosTREA;
+  const montoNetoTREA = monto - totalCostosTCEA;
 
-  const tirSemestralTCEA = calcularTIR(flujos, montoConCostosTCEA);
+  const tirSemestralTCEA = calcularTIR(flujos, montoConCostosTCEA, tasaAnual);
   const teaTCEA = Math.pow(1 + tirSemestralTCEA, 2) - 1;
   metrics.value.tasaCostoEfectivoAnual = parseFloat(teaTCEA.toFixed(6));
 
-  const montoNetoTREA = monto - totalCostosTREA;
-
-  const tirSemestralTREA = calcularTIR(flujos, montoNetoTREA);
+  const tirSemestralTREA = calcularTIR(flujos, montoNetoTREA, tasaAnual);
   const teaTREA = Math.pow(1 + tirSemestralTREA, 2) - 1;
   metrics.value.tasaRendimientoEfectivoAnual = parseFloat(teaTREA.toFixed(6));
 
   let duracion = 0;
   let valorPresenteBase = 0;
+  let convexidad = 0;
+  const tasa = tasaSemestral;
+  const valorNominal = parseFloat(bondData.value.monto);
 
   flujos.forEach((flujo, index) => {
-    const periodo = index + 1;
-    const flujoEfectivo = flujo.cuota;
-    const vp = flujoEfectivo / Math.pow(1 + tasaSemestral, periodo);
-    duracion += periodo * vp;
+    const t = index + 1;
+    let flujoEfectivo = flujo.cuota;
+
+    if (t === flujos.length) {
+      flujoEfectivo += valorNominal;
+    }
+
+    const vp = flujoEfectivo / Math.pow(1 + tasa, t);
+
+    duracion += t * vp;
+    convexidad += t * (t + 1) * vp;
     valorPresenteBase += vp;
   });
 
@@ -321,20 +374,8 @@ const calcularMetricas = () => {
     (duracion / valorPresenteBase / 2).toFixed(4)
   );
 
-  let convexidad = 0;
-  flujos.forEach((flujo, index) => {
-    const periodo = index + 1;
-    const flujoEfectivo = flujo.cuota;
-    const vp = flujoEfectivo / Math.pow(1 + tasaSemestral, periodo);
-    convexidad += periodo * (periodo + 1) * vp;
-  });
-
   metrics.value.convexidad = parseFloat(
-    (
-      convexidad /
-      (valorPresenteBase * Math.pow(1 + tasaSemestral, 2)) /
-      4
-    ).toFixed(4)
+    (convexidad / (valorPresenteBase * Math.pow(1 + tasa, 2)) / 4).toFixed(4)
   );
 };
 
@@ -453,6 +494,21 @@ const capitalizacionInfo = computed(() => {
             />
           </div>
         </div>
+        <div class="input-group cok-highlight">
+          <label for="cok" class="cok-tooltip">
+            Costo de Oportunidad del Capital (COK %)
+          </label>
+          <pv-input-text
+            id="cok"
+            v-model="cok"
+            type="number"
+            step="0.1"
+            :min="3"
+            :max="20"
+            placeholder="10.0"
+            class="cok-input"
+          />
+        </div>
       </div>
 
       <div class="costs-section">
@@ -504,30 +560,30 @@ const capitalizacionInfo = computed(() => {
 
               <div class="input-group">
                 <label for="costosEstructuracion"
-                  >Costos de Estructuración (%) [0.010-0.015]</label
+                  >Costos de Estructuración (%) [0.10-0.15]</label
                 >
                 <pv-input-text
                   id="costosEstructuracion"
                   v-model="costosAdicionales.costosEstructuracion"
                   type="number"
                   step="0.01"
-                  :min="0.01"
-                  :max="0.015"
+                  :min="0.1"
+                  :max="0.15"
                   placeholder="0.10"
                 />
               </div>
 
               <div class="input-group">
                 <label for="costosColocacion"
-                  >Costos de Colocación (%) [0.011-0.016]</label
+                  >Costos de Colocación (%) [0.11-0.16]</label
                 >
                 <pv-input-text
                   id="costosColocacion"
                   v-model="costosAdicionales.costosColocacion"
                   type="number"
                   step="0.01"
-                  :min="0.011"
-                  :max="0.016"
+                  :min="0.11"
+                  :max="0.16"
                   placeholder="0.11"
                 />
               </div>
@@ -693,6 +749,22 @@ const capitalizacionInfo = computed(() => {
             <div class="metric-label">Convexidad</div>
             <div class="metric-value">{{ metrics.convexidad.toFixed(4) }}</div>
           </div>
+        </div>
+      </div>
+      <div v-if="cashFlowData.length > 0" class="precio-bono-card">
+        <h3>💰 Precio de Venta Máximo del Bono</h3>
+        <div class="precio-valor precio-animado">
+          {{
+            selectedCurrency === "PEN"
+              ? "S/"
+              : selectedCurrency === "USD"
+              ? "$"
+              : "€"
+          }}
+          {{ precioBono.toLocaleString("es-PE", { minimumFractionDigits: 2 }) }}
+        </div>
+        <div class="precio-detail">
+          Calculado con COK = {{ cok }}% | Valor presente de flujos futuros
         </div>
       </div>
     </div>
@@ -1241,5 +1313,222 @@ const capitalizacionInfo = computed(() => {
   animation: fadeInUp 0.6s ease-out;
   animation-delay: 0.15s;
   animation-fill-mode: both;
+}
+
+/* Estilos para el input de COK - ya existente pero mejorado */
+.cok-input-group {
+  background: rgba(30, 41, 59, 0.6);
+  padding: 1.2rem;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.cok-input-group:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
+  transform: translateY(-2px);
+}
+
+.cok-input-group label {
+  color: #60a5fa;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.cok-input-group .p-inputtext {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #e2e8f0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Estilos para el card del Precio de Venta Máximo del Bono - mejorado */
+.precio-bono-card {
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.1) 0%,
+    rgba(16, 185, 129, 0.1) 100%
+  );
+  border: 2px solid rgba(34, 197, 94, 0.4);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-top: 2rem;
+  backdrop-filter: blur(15px);
+  box-shadow: 0 8px 32px rgba(34, 197, 94, 0.2);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.precio-bono-card::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(34, 197, 94, 0.05) 0%,
+    transparent 70%
+  );
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.precio-bono-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 12px 40px rgba(34, 197, 94, 0.3);
+}
+
+.precio-bono-card h3 {
+  color: #e2e8f0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.precio-valor {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #4ade80;
+  margin-bottom: 0.5rem;
+  text-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+.precio-detail {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  font-style: italic;
+  position: relative;
+  z-index: 1;
+}
+
+/* Animación para el efecto de pulso */
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.1;
+  }
+}
+
+/* Estilos adicionales para mejorar la integración */
+.enhanced-input-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cok-highlight {
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(147, 51, 234, 0.1) 100%
+  );
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-top: 1rem;
+  backdrop-filter: blur(10px);
+}
+
+.cok-highlight label {
+  color: #a78bfa;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .precio-bono-card {
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .precio-valor {
+    font-size: 2rem;
+  }
+
+  .precio-bono-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .cok-input-group {
+    padding: 1rem;
+  }
+}
+
+/* Efecto de escritura animada para el precio */
+.precio-animado {
+  animation: slideInFromRight 0.8s ease-out;
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Indicador visual para COK */
+.cok-indicator {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #60a5fa;
+  font-size: 1.2rem;
+  pointer-events: none;
+}
+
+/* Tooltip para COK */
+.cok-tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.cok-tooltip::after {
+  content: "El COK representa la rentabilidad mínima exigida por el inversionista";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  z-index: 1000;
+}
+
+.cok-tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
 }
 </style>
